@@ -8,7 +8,15 @@ typedef NS_ENUM(NSInteger, CSKMessageType) {
 };
 
 // One log entry, whatever store it came from.
-@interface CSKMessage : NSObject
+@interface CSKMessage : NSObject {
+	NSDate *_date;
+	NSString *_sender;
+	pid_t _processID;
+	NSString *_subsystem;
+	NSString *_category;
+	int _level;
+	NSString *_composedMessage;
+}
 @property (readonly, copy) NSDate *date;
 @property (readonly, copy) NSString *sender;
 @property (readonly) pid_t processID;

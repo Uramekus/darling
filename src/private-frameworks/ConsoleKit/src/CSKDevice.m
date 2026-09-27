@@ -38,12 +38,16 @@
 @end
 
 // Darling has no attached iOS or watchOS devices, so the host is the only device.
-@interface CSKDeviceManager : NSObject
+@interface CSKDeviceManager : NSObject {
+	__weak id _delegate;
+}
 @property (weak) id delegate;
 @property (readonly, copy) NSArray<CSKDevice *> *allDevices;
 @end
 
 @implementation CSKDeviceManager
+
+@synthesize delegate = _delegate;
 
 - (NSArray<CSKDevice *> *)allDevices
 {

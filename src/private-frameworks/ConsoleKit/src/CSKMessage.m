@@ -2,6 +2,14 @@
 
 @implementation CSKMessage
 
+@synthesize date = _date;
+@synthesize sender = _sender;
+@synthesize processID = _processID;
+@synthesize subsystem = _subsystem;
+@synthesize category = _category;
+@synthesize level = _level;
+@synthesize composedMessage = _composedMessage;
+
 + (NSString *)localizedMessageTypeNameForType:(CSKMessageType)type
 {
 	switch (type) {
