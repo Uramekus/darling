@@ -121,6 +121,7 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 		return paramErr;
 
 	std::string exePath;
+	std::vector<std::string> argumentStorage;
 	std::vector<char*> argv;
 	std::unique_ptr<std::vector<char*>> envp;
 	int pipefds[2];
@@ -140,8 +141,18 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 			if (CFGetTypeID(ref) != CFStringGetTypeID())
 				return paramErr;
 
-			argv.push_back((char*) CFStringGetCStringPtr((CFStringRef) CFArrayGetValueAtIndex(appParams->argv, i), kCFStringEncodingUTF8));
+			CFIndex capacity = CFStringGetMaximumSizeForEncoding(
+				CFStringGetLength(ref), kCFStringEncodingUTF8) + 1;
+			if (capacity <= 0)
+				return paramErr;
+			std::vector<char> buffer(capacity);
+			if (!CFStringGetCString(ref, buffer.data(), buffer.size(), kCFStringEncodingUTF8))
+				return paramErr;
+			argumentStorage.emplace_back(buffer.data());
 		}
+		// Take pointers only after storage growth can no longer invalidate them.
+		for (std::string& argument : argumentStorage)
+			argv.push_back((char*) argument.c_str());
 		argv.push_back(nullptr);
 	}
 	else
@@ -283,5 +294,4 @@ CFStringRef LSSystemApplicationType = CFSTR("System");
 CFStringRef LSInternalApplicationType = CFSTR("Internal");
 CFStringRef LSPlugInKitType = CFSTR("PluginKitPlugin");
 CFStringRef LSVPNPluginType = CFSTR("VPNPlugin");
-
 
