@@ -161,6 +161,8 @@ add_framework(WebKit
         src/WKWebsiteDataRecord.m
         src/WKWebsiteDataStore.m
         src/WKWebView.m
+        src/dwb-siblings.m
+        src/dwb_client.c
         src/WKWebViewConfiguration.m
         src/WKWindowFeatures.m
 
