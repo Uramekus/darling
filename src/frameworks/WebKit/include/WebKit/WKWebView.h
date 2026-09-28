@@ -17,8 +17,21 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* AppKit, not just Foundation: the superclass is an NSView, which Foundation
+ * does not declare. WebView.h in this same directory already imports Cocoa for
+ * the same reason. */
+#include <AppKit/AppKit.h>
 #include <Foundation/Foundation.h>
 
-@interface WKWebView : NSObject
+/* WKWebView is a view on macOS, and an application that allocates one expects
+ * to be able to put it in a window and have AppKit lay it out. Declared here as
+ * an NSObject, which it is not: [super setFrame:] is an unrecognized selector,
+ * the view can never be added to a window, and the app dies on its first layout
+ * pass even when every other part of the proxy works.
+ *
+ * The class body stays empty. The implementation is supplied by the guest
+ * (src/WKWebView.m and src/dwb-siblings.m), which proxies rendering to
+ * darling-webkit-host over a Unix socket. */
+@interface WKWebView : NSView
 
 @end
