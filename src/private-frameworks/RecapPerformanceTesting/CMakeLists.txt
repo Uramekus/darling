@@ -29,4 +29,5 @@ add_framework(RecapPerformanceTesting
 		system
 		objc
 		Foundation
+		CoreGraphics
 )
