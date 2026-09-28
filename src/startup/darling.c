@@ -475,6 +475,89 @@ static void ensureHostRootSymlinks(const char* prefixPath)
 
 void createDir(const char* path);
 
+static void ensureCupsSymlink(const char* prefixPath)
+{
+	const char* host_sockets[4];
+	int num_sockets = 0;
+	host_sockets[num_sockets++] = "/run/cups/cups.sock";
+	host_sockets[num_sockets++] = "/var/run/cups/cups.sock";
+
+	char termux_sock[1024] = {0};
+	const char* termux_pfx = getenvTrusted("PREFIX");
+	if (!termux_pfx) termux_pfx = getenvTrusted("TERMUX_PREFIX");
+	if (termux_pfx && termux_pfx[0] == '/')
+	{
+		snprintf(termux_sock, sizeof(termux_sock), "%s/var/run/cups/cups.sock", termux_pfx);
+		host_sockets[num_sockets++] = termux_sock;
+	}
+	host_sockets[num_sockets] = NULL;
+
+	const char* target_host_sock = NULL;
+	for (int i = 0; host_sockets[i] != NULL; i++)
+	{
+		if (access(host_sockets[i], F_OK) == 0)
+		{
+			target_host_sock = host_sockets[i];
+			break;
+		}
+	}
+
+	if (!target_host_sock)
+		return;
+
+	char guest_target[2048];
+	snprintf(guest_target, sizeof(guest_target), "/Volumes/SystemRoot%s", target_host_sock);
+
+	const char* symlink_locations[] = {
+		"/var/run/cupsd",
+		"/private/var/run/cupsd"
+	};
+
+	for (size_t i = 0; i < sizeof(symlink_locations)/sizeof(symlink_locations[0]); i++)
+	{
+		char link_path[4096];
+		snprintf(link_path, sizeof(link_path), "%s%s", prefixPath, symlink_locations[i]);
+
+		char* slash = strrchr(link_path, '/');
+		if (slash)
+		{
+			*slash = '\0';
+			createDir(link_path);
+			*slash = '/';
+		}
+
+		struct stat st;
+		if (lstat(link_path, &st) == 0)
+		{
+			if (S_ISLNK(st.st_mode))
+			{
+				char cur_target[2048] = {0};
+				ssize_t len = readlink(link_path, cur_target, sizeof(cur_target) - 1);
+				if (len > 0 && strcmp(cur_target, guest_target) == 0)
+					continue;
+				unlink(link_path);
+			}
+			else if (S_ISDIR(st.st_mode))
+			{
+				rmdir(link_path);
+			}
+			else
+			{
+				unlink(link_path);
+			}
+		}
+
+		if (symlink(guest_target, link_path) != 0)
+		{
+			// Log on failure for debugging prefix configuration
+			#ifdef DEBUG
+			fprintf(stderr, "ensureCupsSymlink: failed to create symlink %s -> %s: %s\n",
+				link_path, guest_target, strerror(errno));
+			#endif
+		}
+	}
+}
+
 static void ensureShSymlink(const char* prefixPath)
 {
 	char binDir[4096];
@@ -1671,6 +1754,7 @@ int main(int argc, char ** argv)
 	ensureHostRootSymlinks(prefix);
 	ensureShSymlink(prefix);
 	ensureHomebrewSymlinks(prefix);
+	ensureCupsSymlink(prefix);
 	ensureKeychains(prefix);
 	ensureSystemVersion(prefix);
 	restoreRootIds();
@@ -2992,6 +3076,7 @@ void setupPrefix()
 	ensureHostRootSymlinks(prefix);
 	ensureShSymlink(prefix);
 	ensureHomebrewSymlinks(prefix);
+	ensureCupsSymlink(prefix);
 	ensureKeychains(prefix);
 
 	// create passwd, master.passwd, and group
