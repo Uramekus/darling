@@ -49,9 +49,72 @@ static int shm_unlink(const char *name) {
 
 #include <darlingserver/rpc.h>
 
+#if defined(__ANDROID__)
+#include <sys/auxv.h>
+static const char* getenvTrusted(const char* name)
+{
+#if defined(AT_SECURE)
+	if (getauxval(AT_SECURE))
+		return NULL;
+#endif
+	return getenv(name);
+}
+#endif
+
 static void* dlopen_simple(const char* name)
 {
-	return dlopen(name, RTLD_LAZY);
+	if (!name)
+		return NULL;
+
+	void* rv = dlopen(name, RTLD_LAZY);
+	if (rv)
+		return rv;
+
+	char unversioned[512] = {0};
+	bool has_unversioned = false;
+	const char* so = strstr(name, ".so.");
+	if (so)
+	{
+		size_t base_len = (size_t)(so - name) + 3;
+		if (base_len < sizeof(unversioned))
+		{
+			memcpy(unversioned, name, base_len);
+			unversioned[base_len] = '\0';
+			has_unversioned = true;
+			rv = dlopen(unversioned, RTLD_LAZY);
+			if (rv)
+				return rv;
+		}
+	}
+
+#if defined(__ANDROID__)
+	const char* pfx = getenvTrusted("TERMUX_PREFIX");
+	if (!pfx || !pfx[0]) pfx = getenvTrusted("PREFIX");
+	if (!pfx || !pfx[0]) pfx = "/data/data/com.termux/files/usr";
+
+	// If name contains directories, take the basename so we don't produce e.g. /data/.../lib//usr/lib/...
+	const char* fname = strrchr(name, '/');
+	fname = fname ? fname + 1 : name;
+
+	char path[1024];
+	snprintf(path, sizeof(path), "%s/lib/%s", pfx, fname);
+	rv = dlopen(path, RTLD_LAZY);
+	if (rv)
+		return rv;
+
+	if (has_unversioned)
+	{
+		const char* ufname = strrchr(unversioned, '/');
+		ufname = ufname ? ufname + 1 : unversioned;
+
+		snprintf(path, sizeof(path), "%s/lib/%s", pfx, ufname);
+		rv = dlopen(path, RTLD_LAZY);
+		if (rv)
+			return rv;
+	}
+#endif
+
+	return NULL;
 }
 
 static void* dlopen_fatal(const char* name)
