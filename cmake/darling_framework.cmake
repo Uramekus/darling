@@ -109,6 +109,8 @@ function(add_framework name)
 		set_property(TARGET ${my_name} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 	endif (FRAMEWORK_LINK_FLAGS)
 
+	add_swift_dylib_map(${my_name})
+
 	install(TARGETS ${my_name} DESTINATION "libexec/darling${root_dir}/${name}.framework/Versions/${FRAMEWORK_VERSION}/" ${EXCLUDE_FROM_ALL_ARG})
 
 	if (FRAMEWORK_RESOURCES)
