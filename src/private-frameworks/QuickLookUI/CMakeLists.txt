@@ -18,5 +18,5 @@ add_framework(QuickLookUI
     DEPENDENCIES
         system
         objc
-        Cocoa
+        Foundation
 )
