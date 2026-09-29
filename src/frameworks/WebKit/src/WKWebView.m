@@ -694,7 +694,15 @@ static const char *dwb_socket_path(void)
 			 * framework-include, not in cocotron - so sending it is an
 			 * unrecognized selector. What exists is NSImage, which a rep is a
 			 * kind of, so the rep is drawn into the view by size. */
-			if (rep != nil && [_remoteView lockFocusIfCanDraw]) {
+			/* lockFocusIfCanDraw throws rather than returning NO when the view is
+			 * not in a window, and an uncaught NSException aborts the whole process
+			 * - so an embedded web view that has not been added to a window yet
+			 * takes its host app down with it. A view with no window has no window
+			 * to lock focus into, so there is nothing to draw into either: skipping
+			 * here is what real AppKit's return-NO means. The next tick will
+			 * present the frame once the app has added the view to a window. */
+			if (rep != nil && [_remoteView window] != nil &&
+			    [_remoteView lockFocusIfCanDraw]) {
 				NSImage *image = (NSImage *)rep;
 				[image drawInRect: [_remoteView bounds]
 				         fromRect: NSMakeRect(0, 0, fh.width, fh.height)
