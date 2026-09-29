@@ -103,6 +103,9 @@ OSStatus LSTerm(void)
 static
 int execvpe(const char* name, char** argv, char** envp)
 {
+	if (!envp)
+		return execvp(name, argv);
+
 	char** orig_env;
 	int ret;
 
@@ -121,6 +124,7 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 		return paramErr;
 
 	std::string exePath;
+	std::vector<std::string> argumentStorage;
 	std::vector<char*> argv;
 	std::unique_ptr<std::vector<char*>> envp;
 	int pipefds[2];
@@ -140,8 +144,18 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 			if (CFGetTypeID(ref) != CFStringGetTypeID())
 				return paramErr;
 
-			argv.push_back((char*) CFStringGetCStringPtr((CFStringRef) CFArrayGetValueAtIndex(appParams->argv, i), kCFStringEncodingUTF8));
+			CFIndex capacity = CFStringGetMaximumSizeForEncoding(
+				CFStringGetLength(ref), kCFStringEncodingUTF8) + 1;
+			if (capacity <= 0)
+				return paramErr;
+			std::vector<char> buffer(capacity);
+			if (!CFStringGetCString(ref, buffer.data(), buffer.size(), kCFStringEncodingUTF8))
+				return paramErr;
+			argumentStorage.emplace_back(buffer.data());
 		}
+		// Take pointers only after storage growth can no longer invalidate them.
+		for (std::string& argument : argumentStorage)
+			argv.push_back((char*) argument.c_str());
 		argv.push_back(nullptr);
 	}
 	else
@@ -158,19 +172,30 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 		CFDictionaryApplyFunction(appParams->environment, [](const void* key, const void* value, void* context) {
 					CFStringRef skey = (CFStringRef) key;
 					CFStringRef svalue = (CFStringRef) value;
-					std::vector<const char*>* envp = (std::vector<const char*>*) context;
+					std::vector<char*>* envp = (std::vector<char*>*) context;
 
 					if (CFGetTypeID(skey) == CFStringGetTypeID() && CFGetTypeID(svalue) == CFStringGetTypeID())
 					{
-						char* str = new char[CFStringGetLength(skey) + CFStringGetLength(svalue) + 1];
-
-						strcpy(str, CFStringGetCStringPtr(skey, kCFStringEncodingUTF8));
-						strcat(str, "=");
-						strcat(str, CFStringGetCStringPtr(svalue, kCFStringEncodingUTF8));
-
-						envp->push_back(str);
+						CFIndex keyCapacity = CFStringGetMaximumSizeForEncoding(
+							CFStringGetLength(skey), kCFStringEncodingUTF8) + 1;
+						CFIndex valueCapacity = CFStringGetMaximumSizeForEncoding(
+							CFStringGetLength(svalue), kCFStringEncodingUTF8) + 1;
+						char* str = new char[keyCapacity + valueCapacity + 1];
+						if (CFStringGetCString(skey, str, keyCapacity, kCFStringEncodingUTF8))
+						{
+							size_t keyLength = strlen(str);
+							str[keyLength] = '=';
+							if (CFStringGetCString(svalue, str + keyLength + 1,
+								valueCapacity, kCFStringEncodingUTF8))
+								envp->push_back(str);
+							else
+								delete [] str;
+						}
+						else
+							delete [] str;
 					}
 				}, envp.get());
+		envp->push_back(nullptr);
 	}
 
 	// https://stackoverflow.com/questions/1584956/how-to-handle-execvp-errors-after-fork
