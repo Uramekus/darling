@@ -69,7 +69,9 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	char kernfd[12];
 	char __user* elfcalls_user;
 	char elfcalls[27];
-	char __user* applep_contents[4];
+	char __user* elfcalls_size_user;
+	char elfcalls_size[sizeof("elf_calls_size=") + 2 * sizeof(size_t)];
+	char __user* applep_contents[5];
 
 #define user_long_count(_val) (((_val) + (sizeof(user_long_t) - 1)) / sizeof(user_long_t))
 
@@ -135,7 +137,7 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	// `envc`-count pointers for env vars (+1 for NULL)
 	// `sizeof(applep_contents) / sizeof(*applep_contents)`-count pointers for applep arguments (already includes NULL)
 	// space for exepath, kernfd, and elfcalls
-	sp -= 1 + 1 + (lr->argc + 1) + (lr->envc + 1) + (sizeof(applep_contents) / sizeof(*applep_contents)) + user_long_count(exepath_len + sizeof(EXECUTABLE_PATH) + sizeof(kernfd) + sizeof(elfcalls));
+	sp -= 1 + 1 + (lr->argc + 1) + (lr->envc + 1) + (sizeof(applep_contents) / sizeof(*applep_contents)) + user_long_count(exepath_len + sizeof(EXECUTABLE_PATH) + sizeof(kernfd) + sizeof(elfcalls) + sizeof(elfcalls_size));
 
 	exepath_user = (char __user*) lr->stack_top - exepath_len - sizeof(EXECUTABLE_PATH);
 	memcpy(exepath_user, EXECUTABLE_PATH, sizeof(EXECUTABLE_PATH)-1);
@@ -155,10 +157,17 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	elfcalls_user = kernfd_user - sizeof(elfcalls);
 	memcpy(elfcalls_user, elfcalls, sizeof(elfcalls));
 
+	// Optional metadata outside the historical callback table layout. Consumers
+	// can check its hexadecimal byte size before accessing appended callbacks.
+	snprintf(elfcalls_size, sizeof(elfcalls_size), "elf_calls_size=%zx", sizeof(_elfcalls));
+	elfcalls_size_user = elfcalls_user - sizeof(elfcalls_size);
+	memcpy(elfcalls_size_user, elfcalls_size, sizeof(elfcalls_size));
+
 	applep_contents[0] = exepath_user;
 	applep_contents[1] = kernfd_user;
 	applep_contents[2] = elfcalls_user;
-	applep_contents[3] = NULL;
+	applep_contents[3] = elfcalls_size_user;
+	applep_contents[4] = NULL;
 
 	lr->stack_top = (unsigned long) sp;
 
