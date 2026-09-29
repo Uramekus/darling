@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <alloca.h>
 #include <errno.h>
@@ -279,7 +280,7 @@ static const char* getInstallPrefix(void)
 // recorded host PID and verify its uid and exact prefix socket environment.
 static pid_t shellspawnPeer(int *handle)
 {
-	char path[4096], environment[65536], expected[4096];
+	char path[4096], expected[4096];
 	pid_t pid = 0;
 	snprintf(path, sizeof(path), "%s/.shellspawn.pid", prefix);
 	useOriginalIds();
@@ -297,24 +298,33 @@ static pid_t shellspawnPeer(int *handle)
 		if (pinned >= 0) close(pinned);
 		restoreRootIds(); return 0;
 	}
-	snprintf(path, sizeof(path), "/proc/%d/environ", pid);
-	fd = open(path, O_RDONLY | O_CLOEXEC);
-	ssize_t size = fd < 0 ? -1 : read(fd, environment, sizeof(environment));
-	if (fd >= 0) close(fd);
 	int len = snprintf(expected, sizeof(expected), "__mldr_sockpath=%s/.darlingserver.sock", prefix);
-	bool match = false;
-	if (len > 0 && (size_t)len < sizeof(expected) && size > 0) {
-		for (size_t pos = 0; pos < (size_t)size;) {
-			size_t n = strnlen(environment + pos, size - pos);
-			if (n == (size_t)size - pos) break;
-			if (!strcmp(environment + pos, expected)) { match = true; break; }
-			pos += n + 1;
-		}
-	}
+	bool match = len > 0 && (size_t)len < sizeof(expected) && shutdownEnvHas(pid, expected);
 	restoreRootIds();
 	if (!match) { close(pinned); return 0; }
 	*handle = pinned;
 	return pid;
+}
+
+// Nonroot containers have no PID namespace, so a dead server's tree outlives it. Stops those
+// leftovers in this prefix; returns as shutdownOrphans().
+static int stopPrefixOrphans(pid_t *liveServer)
+{
+	const char* instPrefix = getInstallPrefix();
+	char launchdMldr[4096], guestMldr[4096], resolved[2][PATH_MAX];
+	snprintf(launchdMldr, sizeof(launchdMldr), "%s/libexec/darling/bin/mldr", instPrefix);
+	snprintf(guestMldr, sizeof(guestMldr), "%s/libexec/darling/usr/libexec/darling/mldr", instPrefix);
+	useOriginalIds();
+	// /proc/<pid>/exe is canonical, so compare against the canonical install paths.
+	const char* const mldr[2] = {
+		realpath(launchdMldr, resolved[0]) ? resolved[0] : launchdMldr,
+		realpath(guestMldr, resolved[1]) ? resolved[1] : guestMldr,
+	};
+	int stopped = shutdownOrphans(prefix, g_originalUid, mldr, liveServer);
+	restoreRootIds();
+	if (stopped > 0)
+		fprintf(stderr, "Stopped %d processes left by a dead darlingserver.\n", stopped);
+	return stopped;
 }
 
 static void spawnShellspawn(void)
@@ -1892,6 +1902,16 @@ int main(int argc, char ** argv)
 			}
 		}
 
+		pid_t liveServer;
+		if (stopPrefixOrphans(&liveServer) < 0)
+			return 1;
+		if (liveServer)
+		{
+			fprintf(stderr, "darlingserver %d still serves %s but is not the one recorded in .init.pid; not stopping it.\n",
+				liveServer, prefix);
+			return 1;
+		}
+
 		char socketPath[4096];
 		snprintf(socketPath, sizeof(socketPath), "%s" SHELLSPAWN_SOCKPATH, prefix);
 
@@ -1919,8 +1939,12 @@ int main(int argc, char ** argv)
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
 	{
+		pid_t liveServer;
+		if (stopPrefixOrphans(&liveServer) < 0)
+			return 1;
+
 		char socketPath[4096];
-		
+
 		snprintf(socketPath, sizeof(socketPath), "%s"  SHELLSPAWN_SOCKPATH, prefix);
 
 		char dserverSock[4096];

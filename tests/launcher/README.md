@@ -59,6 +59,25 @@ named darlingserver and the test caller must survive. A different prefix must
 fail the server identity check. The test reaps its children, including orphans.
 Linux pidfd syscalls are required; unsupported kernels fail closed.
 
+## Orphans of a dead server
+
+Run without root or any Darling container:
+
+```sh
+cc -Wall -Wextra -Werror -O2 tests/launcher/orphan-cleanup.c -o /tmp/darling-orphan-cleanup-test
+/tmp/darling-orphan-cleanup-test
+```
+
+Nonroot containers have no PID namespace, so when darlingserver dies its guests are
+reparented to init and no longer descend from any server. `shutdownOrphans()` finds
+them by exact prefix socket environment, the invoking user and an `mldr` executable
+path (a replaced binary's ` (deleted)` suffix is ignored). The test copies itself to
+two `mldr` paths and checks that a live server for the prefix blocks reaping; that
+after it dies the prefix's guests, including a grandchild, a SIGTERM-resistant child
+and one running a since-replaced binary, are stopped; and that a non-`mldr` process,
+another prefix's guest and a process without the socket environment survive. The
+prefix is the run's own temporary directory.
+
 For container integration testing, use the fixed launcher with two disposable
 prefixes. Boot both, shut down the first, check the second server PID remains
 alive and serves another request, then shut down the second. Do not run the
