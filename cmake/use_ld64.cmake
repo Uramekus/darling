@@ -1,19 +1,10 @@
+include(swift_dylib_map)
+
 FUNCTION(use_ld64 target)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
 
-	# Every Swift dylib built under src/external/swift is redirected from its
-	# guest path to the bundled one, so ld64 never looks for it on the host.
-	# Deriving the list from the directory keeps it correct as the submodule
-	# gains and loses libraries; hand-maintaining it silently breaks whichever
-	# library was added last.
-	file(GLOB DARLING_SWIFT_DYLIBS "${CMAKE_SOURCE_DIR}/src/external/swift/libswift*.dylib")
-	set(SWIFT_DYLIB_MAP "")
-	foreach(swift_dylib ${DARLING_SWIFT_DYLIBS})
-		get_filename_component(swift_name "${swift_dylib}" NAME)
-		set(SWIFT_DYLIB_MAP "${SWIFT_DYLIB_MAP} -Wl,-dylib_file,/usr/lib/swift/${swift_name}:${swift_dylib}")
-	endforeach()
-	set_property(TARGET ${target} APPEND_STRING PROPERTY LINK_FLAGS " ${SWIFT_DYLIB_MAP} ")
+	add_swift_dylib_map(${target})
 
 	if (COMPONENT_gui)
 		set(COCOTRON_FW_PATH "${CMAKE_BINARY_DIR}/src/external/cocotron")
