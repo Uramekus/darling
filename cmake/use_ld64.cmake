@@ -2,6 +2,19 @@ FUNCTION(use_ld64 target)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
 
+	# Every Swift dylib built under src/external/swift is redirected from its
+	# guest path to the bundled one, so ld64 never looks for it on the host.
+	# Deriving the list from the directory keeps it correct as the submodule
+	# gains and loses libraries; hand-maintaining it silently breaks whichever
+	# library was added last.
+	file(GLOB DARLING_SWIFT_DYLIBS "${CMAKE_SOURCE_DIR}/src/external/swift/libswift*.dylib")
+	set(SWIFT_DYLIB_MAP "")
+	foreach(swift_dylib ${DARLING_SWIFT_DYLIBS})
+		get_filename_component(swift_name "${swift_dylib}" NAME)
+		set(SWIFT_DYLIB_MAP "${SWIFT_DYLIB_MAP} -Wl,-dylib_file,/usr/lib/swift/${swift_name}:${swift_dylib}")
+	endforeach()
+	set_property(TARGET ${target} APPEND_STRING PROPERTY LINK_FLAGS " ${SWIFT_DYLIB_MAP} ")
+
 	if (COMPONENT_gui)
 		set(COCOTRON_FW_PATH "${CMAKE_BINARY_DIR}/src/external/cocotron")
 		set(IMAGE_IO_PATH "${CMAKE_BINARY_DIR}/src/frameworks/ImageIO/ImageIO")
@@ -51,18 +64,6 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libsystem_malloc.dylib:${CMAKE_BINARY_DIR}/src/external/libmalloc/libsystem_malloc_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_configuration.dylib:${CMAKE_BINARY_DIR}/src/external/configd/libsystem_configuration.dylib \
 -Wl,-dylib_file,/usr/lib/libobjc.A.dylib:${CMAKE_BINARY_DIR}/src/external/objc4/runtime/libobjc.A.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftFoundation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftFoundation.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftCore.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCore.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftCoreFoundation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreFoundation.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftDarwin.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftDarwin.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftDispatch.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftDispatch.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftObjectiveC.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftObjectiveC.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftXPC.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftXPC.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswift_Concurrency.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_Concurrency.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftAppKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAppKit.dylib \
--Wl,-dylib_file,@rpath/libswiftAppKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAppKit.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftCoreGraphics.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreGraphics.dylib \
--Wl,-dylib_file,@rpath/libswiftCoreGraphics.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreGraphics.dylib \
 -Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/icuSources/libicucore.A.dylib \
 -Wl,-dylib_file,/usr/lib/libncurses.5.4.dylib:${CMAKE_BINARY_DIR}/src/external/ncurses/ncurses/ncurses/libncurses.5.4.dylib \
 -Wl,-dylib_file,/usr/lib/libDiagnosticMessagesClient.dylib:${CMAKE_BINARY_DIR}/src/libDiagnosticMessagesClient/libDiagnosticMessagesClient.dylib \
