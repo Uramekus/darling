@@ -55,11 +55,101 @@ static int shutdownHandle(pid_t pid)
  return syscall(SYS_pidfd_open, pid, 0);
 }
 
+/* True if the process's initial environment contains exactly `entry`. */
+static bool shutdownEnvHas(pid_t pid, const char *entry)
+{
+ char path[64];
+ snprintf(path, sizeof(path), "/proc/%d/environ", pid);
+ FILE *f = fopen(path, "re");
+ if (!f) return false;
+ char *item = NULL; size_t cap = 0; bool found = false;
+ while (!found && getdelim(&item, &cap, '\0', f) > 0) found = !strcmp(item, entry);
+ free(item); fclose(f); return found;
+}
+
+static bool shutdownOwnedBy(pid_t pid, uid_t uid)
+{
+ char path[64], line[256]; unsigned real, effective; bool owned = false;
+ snprintf(path, sizeof(path), "/proc/%d/status", pid);
+ FILE *f = fopen(path, "re");
+ if (!f) return false;
+ while (fgets(line, sizeof(line), f))
+  if (sscanf(line, "Uid: %u %u", &real, &effective) == 2) { owned = real == uid && effective == uid; break; }
+ fclose(f); return owned;
+}
+
+/* Compared by path, not inode, so guests of a since-reinstalled mldr still match. */
+static bool shutdownExeIs(pid_t pid, const char *const mldr[2])
+{
+ static const char deleted[] = " (deleted)";
+ char path[64], exe[4096];
+ snprintf(path, sizeof(path), "/proc/%d/exe", pid);
+ ssize_t n = readlink(path, exe, sizeof(exe) - 1);
+ if (n <= 0) return false;
+ exe[n] = 0;
+ size_t d = sizeof(deleted) - 1;
+ if ((size_t)n > d && !strcmp(exe + n - d, deleted)) exe[n - d] = 0;
+ return !strcmp(exe, mldr[0]) || !strcmp(exe, mldr[1]);
+}
+
+/* Stops what a dead darlingserver left behind: processes of `uid` running one of the `mldr`
+ * binaries with this prefix's exact socket environment. Candidates are pinned before looking for a
+ * live server, so a container that starts concurrently is left alone. Returns the number stopped;
+ * 0 with *liveServer set when a server still serves the prefix; -1 on error (reason printed). */
+static inline int shutdownOrphans(const char *prefix, uid_t uid, const char *const mldr[2], pid_t *liveServer)
+{
+ char entry[4096];
+ int len = snprintf(entry, sizeof(entry), "__mldr_sockpath=%s/.darlingserver.sock", prefix);
+ *liveServer = 0;
+ if (len < 0 || (size_t)len >= sizeof(entry)) { fprintf(stderr, "Prefix path too long: %s\n", prefix); return -1; }
+ DIR *dir = opendir("/proc");
+ if (!dir) { perror("opendir /proc"); return -1; }
+ struct pollfd *handles = NULL; pid_t *pids = NULL; size_t count = 0; int result = 0;
+ struct dirent *e;
+ while ((e = readdir(dir))) {
+  pid_t pid = atoi(e->d_name);
+  if (pid <= 1 || pid == getpid()) continue;
+  int fd = shutdownHandle(pid);
+  if (fd < 0) continue;
+  if (!shutdownOwnedBy(pid, uid) || !shutdownExeIs(pid, mldr) || !shutdownEnvHas(pid, entry)) { close(fd); continue; }
+  struct pollfd *h = realloc(handles, (count + 1) * sizeof(*handles));
+  if (h) handles = h;
+  pid_t *p = h ? realloc(pids, (count + 1) * sizeof(*pids)) : NULL;
+  if (p) pids = p;
+  if (!h || !p) { perror("realloc"); close(fd); result = -1; break; }
+  handles[count] = (struct pollfd){ .fd = fd, .events = POLLIN }; pids[count++] = pid;
+ }
+ if (result == 0) {
+  rewinddir(dir);
+  while ((e = readdir(dir))) {
+   pid_t pid = atoi(e->d_name);
+   if (pid > 1 && shutdownServerMatches(pid, prefix) && shutdownOwnedBy(pid, uid)) { *liveServer = pid; break; }
+  }
+ }
+ closedir(dir);
+ if (result == 0 && !*liveServer) {
+  /* SIGKILL only: guest SIGTERM handlers need the dead server and would abort. */
+  for (size_t i = 0; i < count; ++i)
+   if (syscall(SYS_pidfd_send_signal, handles[i].fd, SIGKILL, NULL, 0) < 0 && errno != ESRCH) {
+    fprintf(stderr, "Cannot stop process %d left by a dead darlingserver: %s\n", pids[i], strerror(errno));
+    close(handles[i].fd); handles[i].fd = -1; result = -1;
+   }
+  for (size_t i = 0; i < count; ++i)
+   if (handles[i].fd >= 0 && poll(&handles[i], 1, 1000) <= 0) {
+    fprintf(stderr, "Process %d left by a dead darlingserver did not exit.\n", pids[i]);
+    result = -1;
+   }
+  if (result == 0) result = (int)count;
+ }
+ for (size_t i = 0; i < count; ++i) if (handles[i].fd >= 0) close(handles[i].fd);
+ free(handles); free(pids); return result;
+}
+
 /* Called with a pinned, prefix-validated server. Snapshot handles before TERM so
  * descendants that become orphaned are still covered by the subsequent KILL.
  * Root containers also include reparented tasks in their private PID namespace.
  * Nonroot containers use ancestry only, never the shared host namespace. */
-static bool shutdownContainer(pid_t server, int serverHandle, pid_t shellspawn, int shellHandle)
+static inline bool shutdownContainer(pid_t server, int serverHandle, pid_t shellspawn, int shellHandle)
 {
  char serverNs[128], containerNs[128] = "";
  if (!shutdownNamespace(server, serverNs, sizeof(serverNs))) return false;
