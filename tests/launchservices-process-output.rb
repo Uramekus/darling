@@ -45,6 +45,8 @@ Dir.mktmpdir('ls-process-') do |dir|
     static long CFStringGetTypeID() { abort(); }
     static const char* CFStringGetCStringPtr(CFStringRef, int) { abort(); }
     static long CFStringGetLength(CFStringRef) { abort(); }
+    static CFIndex CFStringGetMaximumSizeForEncoding(CFIndex, int) { abort(); }
+    static bool CFStringGetCString(CFStringRef, char*, CFIndex, int) { abort(); }
     static long CFDictionaryGetCount(CFDictionaryRef) { abort(); }
     static void CFDictionaryApplyFunction(CFDictionaryRef, void (*)(const void*, const void*, void*), void*) { abort(); }
     static pid_t child;
