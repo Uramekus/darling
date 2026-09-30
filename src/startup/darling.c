@@ -1093,6 +1093,22 @@ static void ensureHomebrewSymlinks(const char* prefixPath)
 	}
 }
 
+static void ensureSystemVolumesDataSymlink(const char* prefixPath)
+{
+	char volumesDir[4096];
+	snprintf(volumesDir, sizeof(volumesDir), "%s/System/Volumes", prefixPath);
+	createDir(volumesDir);
+
+	char dataLink[4096];
+	snprintf(dataLink, sizeof(dataLink), "%s/System/Volumes/Data", prefixPath);
+
+	struct stat st;
+	if (lstat(dataLink, &st) != 0)
+	{
+		symlink("../..", dataLink);
+	}
+}
+
 static const char* findHostCaBundle(void)
 {
 	static const char* cached_bundle = NULL;
@@ -1764,6 +1780,7 @@ int main(int argc, char ** argv)
 	ensureHostRootSymlinks(prefix);
 	ensureShSymlink(prefix);
 	ensureHomebrewSymlinks(prefix);
+	ensureSystemVolumesDataSymlink(prefix);
 	ensureCupsSymlink(prefix);
 	ensureKeychains(prefix);
 	ensureSystemVersion(prefix);
@@ -3100,6 +3117,7 @@ void setupPrefix()
 	ensureHostRootSymlinks(prefix);
 	ensureShSymlink(prefix);
 	ensureHomebrewSymlinks(prefix);
+	ensureSystemVolumesDataSymlink(prefix);
 	ensureCupsSymlink(prefix);
 	ensureKeychains(prefix);
 
