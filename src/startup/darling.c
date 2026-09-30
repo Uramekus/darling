@@ -2975,8 +2975,49 @@ char* defaultPrefixPath(void)
 	return buf;
 }
 
+// mkdir -p semantics: every parent that is missing is created, not just the leaf.
+// The single mkdir() this used to be meant <prefix>/System/Volumes when nothing had
+// made <prefix>/System yet, and <prefix>/System/Library/CoreServices on a host with no
+// CA bundle, where ensureKeychains() returns before creating System/Library. Both died
+// in the launcher with ENOENT and exit(1), so a fresh prefix could never be set up.
 void createDir(const char* path)
 {
+	char buf[4096];
+	snprintf(buf, sizeof(buf), "%s", path);
+
+	// Walk the path and create each missing component in turn. An existing component
+	// is left alone, so this is idempotent and still rejects a non-directory in the way.
+	for (char* p = buf + 1; *p != '\0'; p++)
+	{
+		if (*p != '/')
+			continue;
+
+		*p = '\0';
+		struct stat parentSt;
+		if (stat(buf, &parentSt) == 0)
+		{
+			if (!S_ISDIR(parentSt.st_mode))
+			{
+				fprintf(stderr, "%s already exists and is a file. Remove the file.\n", buf);
+				exit(1);
+			}
+		}
+		else if (errno == ENOENT)
+		{
+			if (mkdir(buf, 0755) != 0 && errno != EEXIST)
+			{
+				fprintf(stderr, "Cannot create %s: %s\n", buf, strerror(errno));
+				exit(1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "Cannot access %s: %s\n", buf, strerror(errno));
+			exit(1);
+		}
+		*p = '/';
+	}
+
 	struct stat st;
 
 	if (stat(path, &st) == 0)
