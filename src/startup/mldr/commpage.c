@@ -44,11 +44,26 @@ void commpage_setup(bool _64bit)
 	struct sysinfo si;
 
 	commpage = (uint8_t*) mmap((void*)(_64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS),
-			_64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);
+			_64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);
 	if (commpage == MAP_FAILED)
 	{
 		fprintf(stderr, "Cannot mmap commpage: %s\n", strerror(errno));
 		exit(1);
+	}
+
+	// Fill text section with 'ret' so any commpage routine invocations safely return
+	if ((_64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH) > 0x1000)
+	{
+		size_t text_len = (_64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH) - 0x1000;
+#if defined(__x86_64__) || defined(__i386__)
+		memset(commpage + 0x1000, 0xc3, text_len);
+#elif defined(__aarch64__)
+		uint32_t ret_insn = 0xd65f03c0;
+		for (size_t off = 0x1000; off + 4 <= 0x1000 + text_len; off += 4)
+		{
+			memcpy(commpage + off, &ret_insn, 4);
+		}
+#endif
 	}
 
 	signature = (char*)CGET(_COMM_PAGE_SIGNATURE);
