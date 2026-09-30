@@ -432,8 +432,12 @@ int __darling_thread_rpc_socket(void) {
 			// this is the main thread
 			t_server_socket = __dserver_main_thread_socket_fd;
 		} else {
-			// threads should already have a per-thread socket assigned when they're created
-			abort();
+			// thread created by a native ELF library (e.g. PulseAudio threaded mainloop, driver threads)
+			// dynamically allocate a per-thread socket for dserver RPC instead of aborting!
+			t_server_socket = __mldr_create_rpc_socket();
+			if (t_server_socket == -1) {
+				abort();
+			}
 		}
 	}
 	return t_server_socket;

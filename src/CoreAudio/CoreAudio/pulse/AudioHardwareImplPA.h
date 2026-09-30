@@ -20,10 +20,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef AUDIOHARDWAREIMPLPA_H
 #define AUDIOHARDWAREIMPLPA_H
 #include "../AudioHardwareImpl.h"
-#include "PADispatchMainLoop.h"
+#include "PAThreadedMainLoop.h"
 #include <memory>
 
-class PADispatchMainLoop;
+class PAThreadedMainLoop;
 
 class AudioHardwareImplPA : public AudioHardwareImpl
 {
@@ -38,13 +38,14 @@ public:
 		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
 	
 	void getPAContext(void (^cb)(pa_context*));
+	PAThreadedMainLoop* loop() { return m_loop.get(); }
 	static pa_sample_spec paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned = nullptr);
 protected:
 	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
 	bool validateFormat(const AudioStreamBasicDescription* asbd) const override;
 private:
 	pa_context* m_context = nullptr;
-	std::unique_ptr<PADispatchMainLoop> m_loop;
+	std::unique_ptr<PAThreadedMainLoop> m_loop;
 	const char* m_paRole;
 };
 

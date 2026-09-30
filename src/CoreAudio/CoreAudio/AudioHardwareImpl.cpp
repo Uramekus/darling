@@ -103,6 +103,7 @@ OSStatus AudioHardwareImpl::start(AudioDeviceIOProcID inProcID,
 	AudioHardwareStream* stream = createStream(it->second.first, it->second.second);
 	if (!stream)
 		return kAudioHardwareBadStreamError;
+	stream->start();
 	m_streams.emplace(std::make_pair(inProcID, std::unique_ptr<AudioHardwareStream>(stream)));
 	
 	return noErr;

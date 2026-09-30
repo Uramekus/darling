@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImplPA.h"
 #include "../stub.h"
 #include "AudioHardwareStreamPA.h"
-#include "PADispatchMainLoop.h"
+#include "PAThreadedMainLoop.h"
 #include <CoreFoundation/CFBundle.h>
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFRunLoop.h>
@@ -46,13 +46,18 @@ AudioHardwareImplPA::AudioHardwareImplPA(AudioObjectID myId, const char* paRole)
 
 AudioHardwareImplPA::~AudioHardwareImplPA()
 {
-	if (m_context)
+	if (m_loop)
 	{
-		pa_context_disconnect(m_context);
-		pa_context_unref(m_context);
-		m_context = nullptr;
+		m_loop->lock();
+		if (m_context)
+		{
+			pa_context_disconnect(m_context);
+			pa_context_unref(m_context);
+			m_context = nullptr;
+		}
+		m_loop->unlock();
+		m_loop.reset();
 	}
-	m_loop.reset();
 }
 
 OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
@@ -149,26 +154,11 @@ extern "C" char ***_NSGetArgv(void);
 
 static void paContextStateCB(pa_context* c, void* priv)
 {
-	void (^cb)(pa_context*) = (void (^)(pa_context*)) priv;
-
+	PAThreadedMainLoop* loop = static_cast<PAThreadedMainLoop*>(priv);
 	pa_context_state_t state = pa_context_get_state(c);
-	if (state == PA_CONTEXT_READY)
+	if (state == PA_CONTEXT_READY || state == PA_CONTEXT_FAILED || state == PA_CONTEXT_TERMINATED)
 	{
-		// std::cout << "PA_CONTEXT_READY\n";
-
-		cb(c);
-		Block_release(cb);
-
-		// FIXME: We won't be notified about later disconnects...
-		pa_context_set_state_callback(c, nullptr, nullptr);
-	}
-	else if (state == PA_CONTEXT_FAILED)
-	{
-		std::cerr << "PulseAudio error: PA_CONTEXT_FAILED: " << pa_strerror(pa_context_errno(c)) << "\n";
-
-		cb(nullptr);
-		Block_release(cb);
-		pa_context_set_state_callback(c, nullptr, nullptr);
+		loop->signal(0);
 	}
 }
 
@@ -227,18 +217,27 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 			// pa_proplist_sets(proplist, PA_PROP_APPLICATION_ICON_NAME, "icon-name");
 			// pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, "game");
 
-			m_loop.reset(new PADispatchMainLoop);
+			m_loop.reset(new PAThreadedMainLoop);
+			if (!m_loop->get())
+			{
+				cb(nullptr);
+				return;
+			}
+
+			m_loop->lock();
 
 			m_context = pa_context_new_with_proplist(m_loop->getAPI(), appname, proplist);
 			pa_proplist_free(proplist);
 
 			if (!m_context)
 			{
+				m_loop->unlock();
+				m_loop.reset();
 				cb(nullptr);
 				return;
 			}
 
-			pa_context_set_state_callback(m_context, paContextStateCB, Block_copy(cb));
+			pa_context_set_state_callback(m_context, paContextStateCB, m_loop.get());
 
 			// Ensure PULSE_COOKIE is set so wrapped ELF libpulse can find the host cookie
 			if (!getenv("PULSE_COOKIE"))
@@ -477,19 +476,38 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 				}
 			}
 
-			if (pa_context_connect(m_context, server, PA_CONTEXT_NOFLAGS, nullptr) < 0)
+			if (pa_context_connect(m_context, server, PA_CONTEXT_NOAUTOSPAWN, nullptr) < 0)
 			{
 				std::cerr << "pa_context_connect() returned an error: " << pa_strerror(pa_context_errno(m_context)) << "\n";
-				pa_context_set_state_callback(m_context, nullptr, nullptr);
+				m_loop->unlock();
 				cb(nullptr);
 				return;
 			}
 
-			m_loop->resume();
+			// Wait for connection to reach READY or terminal state
+			while (true)
+			{
+				pa_context_state_t state = pa_context_get_state(m_context);
+				if (state == PA_CONTEXT_READY)
+					break;
+				if (state == PA_CONTEXT_FAILED || state == PA_CONTEXT_TERMINATED)
+				{
+					std::cerr << "PulseAudio error: " << pa_strerror(pa_context_errno(m_context)) << "\n";
+					pa_context_disconnect(m_context);
+					pa_context_unref(m_context);
+					m_context = nullptr;
+					m_loop->unlock();
+					cb(nullptr);
+					return;
+				}
+				m_loop->wait();
+			}
+
+			m_loop->unlock();
 		}
 	}
-	else
-		cb(m_context);
+
+	cb(m_context);
 }
 
 pa_sample_spec AudioHardwareImplPA::paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned)

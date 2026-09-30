@@ -2,6 +2,7 @@
 This file is part of Darling.
 
 Copyright (C) 2020 Lubos Dolezel
+Copyright (C) 2026 VibeDarling Project
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,18 +21,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef AUDIOHARDWARESTREAMPAINPUT_H
 #define AUDIOHARDWARESTREAMPAINPUT_H
 #include "AudioHardwareStreamPA.h"
-#include <fstream>
 
 class AudioHardwareStreamPAInput : public AudioHardwareStreamPA
 {
 public:
-	AudioHardwareStreamPAInput(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData);
-private:
-	void start() override;
-	static void paStreamReadCB(pa_stream* s, size_t length, void* self);
-
-	// std::ofstream m_dump;
+	AudioHardwareStreamPAInput(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData)
+	: AudioHardwareStreamPA(hw, callback, clientData, true)
+	{
+	}
 };
 
-#endif /* AUDIOHARDWARESTREAMPA_H */
-
+#endif /* AUDIOHARDWARESTREAMPAINPUT_H */

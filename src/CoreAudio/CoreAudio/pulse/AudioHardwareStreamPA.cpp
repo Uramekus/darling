@@ -2,6 +2,7 @@
 This file is part of Darling.
 
 Copyright (C) 2020 Lubos Dolezel
+Copyright (C) 2026 VibeDarling Project
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,16 +21,19 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareStreamPA.h"
 #include "AudioHardwareImplPA.h"
 #include <iostream>
+#include <algorithm>
+#include <cstring>
+#include <vector>
 #include <type_traits>
 #include <limits>
 
-AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData)
-: AudioHardwareStream(hw, false), m_callback(callback), m_clientData(clientData)
+AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData, bool isInput)
+: AudioHardwareStream(hw, isInput), m_paHw(hw), m_callback(callback), m_clientData(clientData), m_isInput(isInput)
 {
 	hw->getPAContext(^(pa_context* context) {
 		if (!context)
 		{
-			std::cerr << "Failed to get PulseAudio context\n";
+			std::cerr << "[CoreAudio PA] Failed to get PulseAudio context\n";
 			return;
 		}
 		
@@ -37,68 +41,238 @@ AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDevic
 		
 		if (!pa_sample_spec_valid(&spec))
 		{
-			std::cerr << "Failed to create a valid pa_sample_spec\n";
+			std::cerr << "[CoreAudio PA] Failed to create a valid pa_sample_spec\n";
 			return;
 		}
 
-		m_stream = pa_stream_new(context, "CoreAudio", &spec, nullptr);
+		PAThreadedMainLoop* loop = hw->loop();
+		if (loop) loop->lock();
+
+		m_stream = pa_stream_new(context, isInput ? "CoreAudio Input" : "CoreAudio Output", &spec, nullptr);
+		if (!m_stream)
+		{
+			std::cerr << "[CoreAudio PA] pa_stream_new failed\n";
+			if (loop) loop->unlock();
+			return;
+		}
 
 		pa_stream_set_state_callback(m_stream, [](pa_stream *s, void *userdata) {
-			if (pa_stream_get_state(s) == PA_STREAM_FAILED)
+			AudioHardwareStreamPA* This = static_cast<AudioHardwareStreamPA*>(userdata);
+			pa_stream_state_t state = pa_stream_get_state(s);
+			if (state == PA_STREAM_READY)
 			{
-				std::cerr << "PulseAudio stream failed: " << pa_strerror(pa_context_errno(pa_stream_get_context(s))) << std::endl;
+				pa_stream_cork(s, 0, nullptr, nullptr);
 			}
+			else if (state == PA_STREAM_FAILED)
+			{
+				std::cerr << "[CoreAudio PA] PulseAudio stream failed: " << pa_strerror(pa_context_errno(pa_stream_get_context(s))) << std::endl;
+			}
+			if (This->m_paHw && This->m_paHw->loop())
+				This->m_paHw->loop()->signal(0);
 		}, this);
 
-		pa_stream_set_underflow_callback(m_stream, [](pa_stream *s, void *userdata) {
-			std::cerr << "[CoreAudio PA] Underflow! Corked: " << pa_stream_is_corked(s) << std::endl;
-		}, nullptr);
+		if (!isInput)
+		{
+			struct pa_buffer_attr battr;
+			battr.fragsize = uint32_t(-1);
+			battr.maxlength = uint32_t(-1);
+			battr.minreq = uint32_t(-1);
+			battr.prebuf = uint32_t(-1);
+			battr.tlength = uint32_t(-1);
 
-		pa_stream_set_overflow_callback(m_stream, [](pa_stream *s, void *userdata) {
-			std::cerr << "[CoreAudio PA] Overflow!\n";
-		}, nullptr);
+			pa_stream_set_write_callback(m_stream, paStreamWriteCB, this);
 
-		pa_stream_set_suspended_callback(m_stream, [](pa_stream *s, void *userdata) {
-			std::cerr << "[CoreAudio PA] Stream suspended: " << pa_stream_is_suspended(s) << std::endl;
-		}, nullptr);
+			pa_stream_connect_playback(m_stream, nullptr, &battr,
+				pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_ADJUST_LATENCY | PA_STREAM_AUTO_TIMING_UPDATE),
+				nullptr, nullptr);
+		}
+		else
+		{
+			struct pa_buffer_attr battr;
+			battr.fragsize = uint32_t(-1);
+			battr.maxlength = uint32_t(m_bufferSize);
+			battr.minreq = uint32_t(-1);
+			battr.prebuf = battr.maxlength;
+			battr.tlength = uint32_t(-1);
 
-		start();
+			pa_stream_set_read_callback(m_stream, paStreamReadCB, this);
+
+			pa_stream_connect_record(m_stream, nullptr, &battr,
+				pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_ADJUST_LATENCY | PA_STREAM_AUTO_TIMING_UPDATE)
+			);
+		}
+
+		if (m_running && pa_stream_get_state(m_stream) == PA_STREAM_READY)
+		{
+			pa_stream_cork(m_stream, false, nullptr, nullptr);
+		}
+
+		if (loop) loop->unlock();
 	});
 }
 
 AudioHardwareStreamPA::~AudioHardwareStreamPA()
 {
+	PAThreadedMainLoop* loop = m_paHw ? m_paHw->loop() : nullptr;
+	if (loop) loop->lock();
+
 	if (m_stream)
 	{
 		pa_stream_disconnect(m_stream);
 		pa_stream_unref(m_stream);
 		m_stream = nullptr;
 	}
+
+	if (loop) loop->unlock();
 }
 
 void AudioHardwareStreamPA::start()
 {
-	std::unique_lock<std::recursive_mutex> l(m_stopMutex);
+	PAThreadedMainLoop* loop = m_paHw ? m_paHw->loop() : nullptr;
+	if (loop) loop->lock();
+
 	m_running = true;
-	if (m_stream && pa_stream_get_state(m_stream) == PA_STREAM_READY)
+	if (m_stream)
 	{
-		pa_stream_cork(m_stream, false, [](pa_stream*, int, void*) {}, nullptr);
+		pa_stream_cork(m_stream, 0, nullptr, nullptr);
 	}
+
+	if (loop) loop->unlock();
 }
 
 void AudioHardwareStreamPA::stop()
 {
-	{
-		std::unique_lock<std::recursive_mutex> l(m_stopMutex);
-		m_running = false;
-	}
+	PAThreadedMainLoop* loop = m_paHw ? m_paHw->loop() : nullptr;
+	if (loop) loop->lock();
+
+	m_running = false;
 	if (m_stream && pa_stream_get_state(m_stream) == PA_STREAM_READY)
 	{
-		pa_stream_cork(m_stream, true, [](pa_stream*, int, void*) {}, nullptr);
+		pa_stream_cork(m_stream, true, nullptr, nullptr);
+	}
+
+	if (loop) loop->unlock();
+}
+
+void AudioHardwareStreamPA::paStreamWriteCB(pa_stream* s, size_t length, void* self)
+{
+	AudioHardwareStreamPA* This = static_cast<AudioHardwareStreamPA*>(self);
+
+	if (!This->m_running)
+	{
+		pa_stream_cork(This->m_stream, 1, nullptr, nullptr);
+		return;
+	}
+
+	if (pa_stream_is_corked(This->m_stream))
+	{
+		pa_stream_cork(This->m_stream, 0, nullptr, nullptr);
+	}
+
+	AudioTimeStamp fake = {0};
+	AudioBufferList* abl = static_cast<AudioBufferList*>(alloca(sizeof(AudioBufferList) + sizeof(AudioBuffer)));
+
+	size_t done = 0;
+
+	while (done < length && This->m_running)
+	{
+		abl->mNumberBuffers = 1;
+		abl->mBuffers[0].mNumberChannels = This->m_paHw->asbd().mChannelsPerFrame ? This->m_paHw->asbd().mChannelsPerFrame : 2;
+
+		size_t rqsize = std::min<UInt32>(This->m_bufferSize, length - done);
+		void* pdata = nullptr;
+		int err = pa_stream_begin_write(This->m_stream, &pdata, &rqsize);
+		if (err < 0 || !pdata || rqsize == 0)
+		{
+			if (err < 0)
+			{
+				std::cerr << "[CoreAudio PA] pa_stream_begin_write failed: " << err << std::endl;
+				pa_stream_cork(This->m_stream, true, nullptr, nullptr);
+			}
+			break;
+		}
+
+		abl->mBuffers[0].mData = pdata;
+		abl->mBuffers[0].mDataByteSize = rqsize;
+
+		OSStatus status = This->m_callback(This->m_paHw->id(), &fake, nullptr, nullptr, abl, &fake, This->m_clientData);
+
+		if (status != noErr || !abl->mBuffers[0].mDataByteSize)
+		{
+			memset(pdata, 0, rqsize);
+		}
+		else if (abl->mBuffers[0].mDataByteSize < rqsize)
+		{
+			memset((uint8_t*)pdata + abl->mBuffers[0].mDataByteSize, 0, rqsize - abl->mBuffers[0].mDataByteSize);
+		}
+
+		if (This->m_convertSignedUnsigned)
+			This->transformSignedUnsigned(abl);
+
+		int rv = pa_stream_write(This->m_stream, pdata, rqsize, nullptr, 0, PA_SEEK_RELATIVE);
+		if (rv != 0)
+		{
+			std::cerr << "[CoreAudio PA] pa_stream_write failed: " << rv << std::endl;
+			break;
+		}
+
+		if (!This->m_running)
+		{
+			pa_stream_cork(This->m_stream, true, nullptr, nullptr);
+			break;
+		}
+
+		done += rqsize;
 	}
 }
 
-// This function seems to only convert unsigned to signed, but it works both ways in practice
+void AudioHardwareStreamPA::paStreamReadCB(pa_stream* s, size_t length, void* self)
+{
+	AudioHardwareStreamPA* This = static_cast<AudioHardwareStreamPA*>(self);
+
+	if (!This->m_running)
+		return;
+
+	AudioTimeStamp fake = {0};
+	AudioBufferList* abl = static_cast<AudioBufferList*>(alloca(sizeof(AudioBufferList) + sizeof(AudioBuffer)));
+	std::vector<uint8_t> hole;
+
+	while (true)
+	{
+		abl->mNumberBuffers = 1;
+		abl->mBuffers[0].mNumberChannels = 2;
+
+		size_t nbytes;
+
+		int rv = pa_stream_peek(This->m_stream, (const void**) &abl->mBuffers[0].mData, &nbytes);
+
+		if (rv < 0 || !nbytes)
+		{
+			break;
+		}
+
+		if (nbytes && !abl->mBuffers[0].mData)
+		{
+			hole.resize(nbytes);
+			abl->mBuffers[0].mData = hole.data();
+		}
+		abl->mBuffers[0].mDataByteSize = nbytes;
+
+		if (This->m_convertSignedUnsigned)
+			This->transformSignedUnsigned(abl);
+
+		OSStatus status = This->m_callback(This->m_paHw->id(), &fake, abl, &fake, nullptr, nullptr, This->m_clientData);
+
+		pa_stream_drop(This->m_stream);
+
+		if (status != noErr)
+		{
+			pa_stream_cork(This->m_stream, true, nullptr, nullptr);
+			break;
+		}
+	}
+}
+
 template <typename T>
 void transform(typename std::make_unsigned<T>::type* data)
 {
@@ -110,7 +284,7 @@ void transform(typename std::make_unsigned<T>::type* data)
 
 void AudioHardwareStreamPA::transformSignedUnsigned(AudioBufferList* abl) const
 {
-	const AudioStreamBasicDescription& asbd = m_hw->asbd();
+	const AudioStreamBasicDescription& asbd = m_paHw->asbd();
 	const bool revEndian = (asbd.mFormatFlags & kAudioFormatFlagIsBigEndian) != (asbd.mFormatFlags & kAudioFormatFlagsNativeEndian);
 
 	for (int i = 0; i < abl->mNumberBuffers; i++)
@@ -146,7 +320,6 @@ void AudioHardwareStreamPA::transformSignedUnsigned(AudioBufferList* abl) const
 					if (revEndian)
 						v = __builtin_bswap32(v);
 					
-					// sign extend
 					if (v & 0x800000)
 						v |= 0xff000000;
 

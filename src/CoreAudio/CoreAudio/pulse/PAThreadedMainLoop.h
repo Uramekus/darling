@@ -1,7 +1,6 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2020 Lubos Dolezel
 Copyright (C) 2026 VibeDarling Project
 
 Darling is free software: you can redistribute it and/or modify
@@ -18,17 +17,27 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef AUDIOHARDWARESTREAMPAOUTPUT_H
-#define AUDIOHARDWARESTREAMPAOUTPUT_H
-#include "AudioHardwareStreamPA.h"
+#ifndef PATHREADEDMAINLOOP_H
+#define PATHREADEDMAINLOOP_H
 
-class AudioHardwareStreamPAOutput : public AudioHardwareStreamPA
+#include <pulse/pulseaudio.h>
+
+class PAThreadedMainLoop
 {
 public:
-	AudioHardwareStreamPAOutput(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData)
-	: AudioHardwareStreamPA(hw, callback, clientData, false)
-	{
-	}
+	PAThreadedMainLoop();
+	~PAThreadedMainLoop();
+
+	void lock();
+	void unlock();
+	void wait();
+	void signal(int accept = 0);
+
+	pa_mainloop_api* getAPI();
+	pa_threaded_mainloop* get() { return m_mainloop; }
+
+private:
+	pa_threaded_mainloop* m_mainloop = nullptr;
 };
 
-#endif /* AUDIOHARDWARESTREAMPAOUTPUT_H */
+#endif /* PATHREADEDMAINLOOP_H */

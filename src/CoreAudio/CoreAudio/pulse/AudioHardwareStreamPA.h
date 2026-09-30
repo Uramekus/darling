@@ -29,19 +29,23 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 class AudioHardwareStreamPA : public AudioHardwareStream
 {
 public:
-	AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData);
+	AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData, bool isInput = false);
 	~AudioHardwareStreamPA();
 
 	void start() override;
 	void stop(/*void(^cbDone)()*/) override;
 protected:
 	void transformSignedUnsigned(AudioBufferList* abl) const;
+	static void paStreamWriteCB(pa_stream* s, size_t length, void* self);
+	static void paStreamReadCB(pa_stream* s, size_t length, void* self);
 protected:
+	AudioHardwareImplPA* m_paHw = nullptr;
 	AudioDeviceIOProc m_callback;
 	void* m_clientData;
-	pa_stream* m_stream;
+	pa_stream* m_stream = nullptr;
 	void(^m_cbDone)();
 	bool m_convertSignedUnsigned = false;
+	bool m_isInput = false;
 
 	bool m_running = false;
 	std::recursive_mutex m_stopMutex;
