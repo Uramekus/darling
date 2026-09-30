@@ -86,6 +86,34 @@ int main(void) {
             assert([LSBundle registerBundleAtPath:failedPath]);
             assert(countRows(@"bundle")==before+1+(int)iteration);
         }
+        // Exercise existing-UTI updates directly inside a transaction, then
+        // roll back so the bundle checksum and original fixture stay coherent.
+        CFBundleRef original=CFBundleCreate(NULL,(CFURLRef)[NSURL fileURLWithPath:path isDirectory:YES]);
+        assert(original);
+        LSBundle* entry=[[[LSBundle alloc] initWithBundle:original] autorelease];
+        CFRelease(original);
+        NSArray* updated=@[@{(NSString*)kUTTypeIdentifierKey:@"org.darling.fixture",
+            (NSString*)kUTTypeDescriptionKey:@"Updated fixture description"}];
+        BOOL needed=YES;
+        assert([g_database beginTransaction] && [entry setupBundleID:&needed] && !needed);
+        assert([entry processUTIs:updated]);
+        NSNumber* bundleID=@(entry.bundleId);
+        row=[g_database executeQuery:@"select description from uti where bundle=?",bundleID];
+        assert([row next] && [[row stringForColumn:@"description"] isEqual:@"Updated fixture description"]);
+        [row close];
+        assert([entry processUTIs:nil]);
+        row=[g_database executeQuery:@"select count(*) as n from uti where bundle=?",bundleID];
+        assert([row next] && [row intForColumn:@"n"]==0); [row close];
+        assert([g_database rollback]);
+        assert([g_database executeUpdate:@"create temp trigger fail_uti_update before update on uti begin select raise(ABORT,'update failure'); end"]);
+        assert([g_database beginTransaction] && [entry setupBundleID:&needed]);
+        assert(![entry processUTIs:updated]);
+        assert([g_database rollback]);
+        assert([g_database executeUpdate:@"drop trigger fail_uti_update"]);
+        row=[g_database executeQuery:@"select description from uti where bundle=?",bundleID];
+        assert([row next] && [[row stringForColumn:@"description"] isEqual:@"Fixture type"]);
+        [row close];
+        puts("PASS existing UTI description update, removed declarations and failed-update rollback");
         puts("PASS registration, PkgInfo metadata, unchanged success, SQLite rollback and retry");
     }
 }

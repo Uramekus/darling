@@ -40,6 +40,11 @@ forms, exported UTI metadata and URL schemes. SQLite triggers inject an insert
 failure separately in each of the eleven registration tables; every table's
 row count must remain unchanged, CLI status must be 1, and retry after removing
 the trigger must succeed. CLI success and usage statuses are also checked.
+An existing-bundle test calls the actual UTI helper within an explicit
+transaction: changed descriptions take effect, absent exported declarations
+remove the UTI record, and a trigger-rejected update returns failure. Rolling
+back restores the original description. This is helper-level update coverage,
+not a test of on-disk Info.plist cache invalidation.
 
 Validated on staged ARM64, including both complete changed source files as
 objects and a linked fixture using the daemon's own build recipes. This is not
