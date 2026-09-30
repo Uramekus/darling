@@ -23,6 +23,9 @@
 #include <AppKit/AppKit.h>
 #include <Foundation/Foundation.h>
 
+@class WKWebViewHostState;
+@class WKWebViewConfiguration;
+
 /* WKWebView is a view on macOS, and an application that allocates one expects
  * to be able to put it in a window and have AppKit lay it out. Declared here as
  * an NSObject, which it is not: [super setFrame:] is an unrecognized selector,
@@ -32,6 +35,17 @@
  * The class body stays empty. The implementation is supplied by the guest
  * (src/WKWebView.m and src/dwb-siblings.m), which proxies rendering to
  * darling-webkit-host over a Unix socket. */
-@interface WKWebView : NSView
+@interface WKWebView : NSView {
+@public
+	WKWebViewHostState *_host;
+	NSView *_remoteView;
+	NSString *_lastURL;
+	WKWebViewConfiguration *_configuration;
+	NSTimer *_frameTimer;
+	id _navigationDelegate;
+	BOOL _allowsBackForwardNavigationGestures;
+	BOOL _loading;
+	NSString *_title;
+}
 
 @end

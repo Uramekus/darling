@@ -138,34 +138,7 @@ static const char *dwb_socket_path(void)
 
 @end
 
-@implementation WKWebView {
-	WKWebViewHostState *_host;
-	NSView *_remoteView;
-	NSString *_lastURL;
-	/* Retained, because the script-message channels live on the configuration's
-	 * user content controller. Without this there is nowhere to look up which
-	 * channels to drain, and anything the app registers after init would be
-	 * invisible. */
-	WKWebViewConfiguration *_configuration;
-	/* Pulls frames and drains the message queue on a timer. The app runs a real
-	 * main run loop, so the pull is scheduled there rather than done once. */
-	NSTimer *_frameTimer;
-	/* The app calls setNavigationDelegate: immediately after constructing the
-	 * view - it is in the binary's selector table - and this class did not
-	 * implement it. The app is a navigation delegate: its binary carries
-	 * webView:didFinishNavigation and decidePolicyForNavigation, which is how it
-	 * learns a page has loaded. Without this property the call is an unrecognized
-	 * selector and the delegate chain never exists, so the previous commit's
-	 * reportPendingError had nothing to report to and navigation completion was
-	 * never announced at all. */
-	id _navigationDelegate;
-	/* Set through KVC as well as the setter, so both must work. Recorded and
-	 * honoured where it can be: the guest keeps no navigation history, so the
-	 * back/forward lists are honestly empty. */
-	BOOL _allowsBackForwardNavigationGestures;
-	BOOL _loading;
-	NSString *_title;
-}
+@implementation WKWebView
 
 - (id) initWithFrame: (NSRect)frame configuration: (id)configuration
 {

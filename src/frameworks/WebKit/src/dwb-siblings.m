@@ -28,12 +28,7 @@ typedef NS_ENUM(NSInteger, DWBInjectionTime) {
 	DWBInjectionTimeDocumentEnd = 1,
 };
 
-@implementation WKUserScript {
-@public
-	NSString *_source;
-	DWBInjectionTime _injectionTime;
-	BOOL _forMainFrameOnly;
-}
+@implementation WKUserScript
 
 - (id) initWithSource: (NSString *)source
        injectionTime: (DWBInjectionTime)time
@@ -195,16 +190,7 @@ typedef NS_ENUM(NSInteger, DWBInjectionTime) {
 
 @end
 
-@implementation WKUserContentController {
-@public
-	NSMutableArray *_scripts;   /* WKUserScript */
-	NSMutableArray *_handlerNames; /* NSString */
-	/* The handler objects themselves, keyed by channel name. The name alone is
-	 * not enough: it is the object the page's postMessage has to be delivered
-	 * to, and dropping it here is what made the whole page-to-guest path
-	 * unreachable even though the host side worked. */
-	NSMutableDictionary *_handlerObjects;
-}
+@implementation WKUserContentController
 
 - (id) init
 {
@@ -365,16 +351,7 @@ typedef NS_ENUM(NSInteger, DWBInjectionTime) {
 - (void) stopLoading;
 @end
 
-@implementation WKWebViewConfiguration {
-@public
-	WKUserContentController *_userContentController;
-	DWBWebViewPreferences *_preferences;
-	NSUInteger _mediaTypesRequiringUserAction;
-	BOOL _allowsInlineMediaPlayback;
-	BOOL _mediaPlaybackRequiresUserGesture;
-	NSString *_applicationNameForUserAgent;
-	NSString *_userAgent;
-}
+@implementation WKWebViewConfiguration
 
 - (id) init
 {

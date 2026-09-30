@@ -19,6 +19,11 @@
 
 #include <Foundation/Foundation.h>
 
-@interface WKUserContentController : NSObject
+@interface WKUserContentController : NSObject {
+@public
+	NSMutableArray *_scripts;
+	NSMutableArray *_handlerNames;
+	NSMutableDictionary *_handlerObjects;
+}
 
 @end

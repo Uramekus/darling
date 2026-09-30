@@ -107,9 +107,9 @@ FUNCTION(use_ld64 target)
  -Wl,-dylib_file,/usr/lib/swift/libswift_StringProcessing.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_StringProcessing.dylib \
  -Wl,-dylib_file,/usr/lib/swift/libswift_Volatile.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_Volatile.dylib \
  -Wl,-dylib_file,/usr/lib/swift/libswiftos.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftos.dylib \
- -Wl,-dylib_file,/usr/lib/swift/libswiftsimd.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftsimd.dylib
--Wl,-dylib_file,@rpath/libswiftAppKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAppKit.dylib \
--Wl,-dylib_file,@rpath/libswiftCoreGraphics.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreGraphics.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftsimd.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftsimd.dylib \
+ -Wl,-dylib_file,@rpath/libswiftAppKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAppKit.dylib \
+ -Wl,-dylib_file,@rpath/libswiftCoreGraphics.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreGraphics.dylib \
 -Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/icuSources/libicucore.A.dylib \
 -Wl,-dylib_file,/usr/lib/libncurses.5.4.dylib:${CMAKE_BINARY_DIR}/src/external/ncurses/ncurses/ncurses/libncurses.5.4.dylib \
 -Wl,-dylib_file,/usr/lib/libDiagnosticMessagesClient.dylib:${CMAKE_BINARY_DIR}/src/libDiagnosticMessagesClient/libDiagnosticMessagesClient.dylib \

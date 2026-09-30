@@ -19,6 +19,18 @@
 
 #include <Foundation/Foundation.h>
 
-@interface WKWebViewConfiguration : NSObject
+@class WKUserContentController;
+@class DWBWebViewPreferences;
+
+@interface WKWebViewConfiguration : NSObject {
+@public
+	WKUserContentController *_userContentController;
+	DWBWebViewPreferences *_preferences;
+	NSUInteger _mediaTypesRequiringUserAction;
+	BOOL _allowsInlineMediaPlayback;
+	BOOL _mediaPlaybackRequiresUserGesture;
+	NSString *_applicationNameForUserAgent;
+	NSString *_userAgent;
+}
 
 @end

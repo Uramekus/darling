@@ -19,6 +19,11 @@
 
 #include <Foundation/Foundation.h>
 
-@interface WKUserScript : NSObject
+@interface WKUserScript : NSObject {
+@public
+	NSString *_source;
+	NSInteger _injectionTime;
+	BOOL _forMainFrameOnly;
+}
 
 @end
