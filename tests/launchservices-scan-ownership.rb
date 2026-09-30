@@ -61,6 +61,8 @@ Dir.mktmpdir('ls-scan-') do |dir|
   OBJC
   File.write("#{dir}/probe.m", code)
   gcc_include = IO.popen(['gcc', '-print-file-name=include'], &:read).strip
-  system('clang', '-fobjc-runtime=gcc', '-fconstant-string-class=NSConstantString', "-I#{root}/usr/include/GNUstep", "-I#{gcc_include}", "#{dir}/probe.m", "-L#{root}/usr/lib", "-Wl,-rpath,#{root}/usr/lib", '-lgnustep-base', '-lobjc', '-o', "#{dir}/probe", exception: true)
+  objc_runtime = IO.popen(['gcc', '-print-file-name=libobjc.so'], &:read).strip
+  abort 'Objective-C runtime unavailable' unless File.file?(objc_runtime)
+  system('clang', '-fobjc-runtime=gcc', '-fconstant-string-class=NSConstantString', "-I#{root}/usr/include/GNUstep", "-I#{gcc_include}", "#{dir}/probe.m", "-L#{root}/usr/lib", "-Wl,-rpath,#{root}/usr/lib", '-lgnustep-base', objc_runtime, '-o', "#{dir}/probe", exception: true)
   system("#{dir}/probe", exception: true)
 end
