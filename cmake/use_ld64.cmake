@@ -51,17 +51,64 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libsystem_malloc.dylib:${CMAKE_BINARY_DIR}/src/external/libmalloc/libsystem_malloc_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_configuration.dylib:${CMAKE_BINARY_DIR}/src/external/configd/libsystem_configuration.dylib \
 -Wl,-dylib_file,/usr/lib/libobjc.A.dylib:${CMAKE_BINARY_DIR}/src/external/objc4/runtime/libobjc.A.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftFoundation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftFoundation.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftCore.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCore.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftCoreFoundation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreFoundation.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftDarwin.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftDarwin.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftDispatch.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftDispatch.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftObjectiveC.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftObjectiveC.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftXPC.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftXPC.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswift_Concurrency.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_Concurrency.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftAppKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAppKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftAVFoundation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAVFoundation.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftAccelerate.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAccelerate.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftAppKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAppKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCloudKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCloudKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCompatibilitySpan.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCompatibilitySpan.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCompression.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCompression.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftContacts.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftContacts.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCore.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCore.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreAudio.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreAudio.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreData.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreData.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreFoundation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreFoundation.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreGraphics.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreGraphics.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreImage.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreImage.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreLocation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreLocation.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreMedia.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreMedia.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCoreText.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreText.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftCryptoTokenKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCryptoTokenKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftDarwin.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftDarwin.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftDispatch.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftDispatch.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftDistributed.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftDistributed.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftFoundation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftFoundation.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftGLKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftGLKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftGameplayKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftGameplayKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftIOKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftIOKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftIntents.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftIntents.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftMapKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftMapKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftMetal.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftMetal.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftMetalKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftMetalKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftModelIO.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftModelIO.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftNaturalLanguage.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftNaturalLanguage.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftNetwork.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftNetwork.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftObjectiveC.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftObjectiveC.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftObservation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftObservation.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftOpenCL.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftOpenCL.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftPhotos.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftPhotos.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftQuartzCore.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftQuartzCore.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftRegexBuilder.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftRegexBuilder.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftRemoteMirror.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftRemoteMirror.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftRuntime.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftRuntime.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftSafariServices.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftSafariServices.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftSceneKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftSceneKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftSpriteKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftSpriteKit.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftSwiftLang.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftSwiftLang.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftSwiftOnoneSupport.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftSwiftOnoneSupport.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftSynchronization.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftSynchronization.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftUniformTypeIdentifiers.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftVision.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftVision.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftXCTest.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftXCTest.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftXPC.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftXPC.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswift_Builtin_float.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_Builtin_float.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswift_Concurrency.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_Concurrency.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswift_Differentiation.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_Differentiation.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswift_RegexParser.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_RegexParser.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswift_StringProcessing.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_StringProcessing.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswift_Volatile.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswift_Volatile.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftos.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftos.dylib \
+ -Wl,-dylib_file,/usr/lib/swift/libswiftsimd.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftsimd.dylib
 -Wl,-dylib_file,@rpath/libswiftAppKit.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftAppKit.dylib \
--Wl,-dylib_file,/usr/lib/swift/libswiftCoreGraphics.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreGraphics.dylib \
 -Wl,-dylib_file,@rpath/libswiftCoreGraphics.dylib:${CMAKE_SOURCE_DIR}/src/external/swift/libswiftCoreGraphics.dylib \
 -Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/icuSources/libicucore.A.dylib \
 -Wl,-dylib_file,/usr/lib/libncurses.5.4.dylib:${CMAKE_BINARY_DIR}/src/external/ncurses/ncurses/ncurses/libncurses.5.4.dylib \
