@@ -561,7 +561,6 @@ add_subdirectory(native)
 
 # Native Applications viewer (installed inside the guest /Applications tree).
 add_subdirectory(darling-applications)
-add_subdirectory(Terminal)
 
 # has its own component checks
 add_subdirectory(external/vim)
