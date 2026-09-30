@@ -182,8 +182,38 @@ static int __dserver_process_lifetime_pipe_refresh() {
 	return pipe[0];
 }
 
+extern void __mldr_socket_bitmap_postfork_child(void);
+extern void __mldr_socket_bitmap_prefork(void);
+extern void __mldr_socket_bitmap_postfork_parent(void);
+
+static int native_fork(void)
+{
+	__mldr_socket_bitmap_prefork();
+	int result = fork();
+	int saved_errno = errno;
+	if (result == 0) {
+		__mldr_thread_postfork_child();
+		__mldr_socket_bitmap_postfork_child();
+	} else {
+		__mldr_socket_bitmap_postfork_parent();
+	}
+	/* Preserve fork's errno even if lock cleanup changes it. */
+	return result < 0 ? -saved_errno : result;
+}
+
+static void arm64_thread_bridge_postfork_complete(void)
+{
+	/* Legacy ABI slot; no native thread broker remains to restart. */
+}
+
 void elfcalls_make(struct elf_calls* calls)
 {
+	calls->native_tsd_base = __darling_native_tsd_base;
+	calls->initial_native_tsd_base = __darling_native_tsd_base();
+	calls->native_fork = native_fork;
+	calls->arm64_thread_bridge_postfork_complete = arm64_thread_bridge_postfork_complete;
+	calls->arm64_record_darling_tsd_base = __darling_arm64_record_tsd_base;
+	calls->arm64_darling_tsd_base = __darling_arm64_tsd_base;
 	calls->dlopen = dlopen_simple;
 	calls->dlclose = dlclose;
 	calls->dlsym = dlsym;
