@@ -646,6 +646,10 @@ static socket_bitmap_t socket_bitmap = {
 	.highest = -1,
 };
 
+void __mldr_socket_bitmap_postfork_child(void) {
+	pthread_mutex_init(&socket_bitmap.mutex, NULL);
+}
+
 static int socket_bitmap_get(socket_bitmap_t* bitmap) {
 	int fd = -1;
 	bool updated = false;
