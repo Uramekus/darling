@@ -506,13 +506,23 @@ static const char *dwb_socket_path(void)
 {
 	char *value = NULL;
 	NSString *result = nil;
+	NSError *failure = nil;
 	if (_host->client.fd < 0) {
-		result = nil;
+		failure = [NSError errorWithDomain: @"DarlingWebKitHost"
+		                              code: 2
+		                          userInfo: [NSDictionary dictionaryWithObject:
+		                            @"darling-webkit-host is not reachable"
+		                                               forKey: NSLocalizedDescriptionKey]];
 	} else if (dwb_client_eval(&_host->client, [script UTF8String], &value) == 0) {
 		result = value ? [NSString stringWithUTF8String: value] : nil;
 		free(value);
 	} else {
-		result = nil;
+		failure = [NSError errorWithDomain: @"DarlingWebKitHost"
+		                              code: 3
+		                          userInfo: [NSDictionary dictionaryWithObject:
+		                            [NSString stringWithUTF8String: _host->client.error]
+		                                               ?: @"script evaluation failed"
+		                                               forKey: NSLocalizedDescriptionKey]];
 	}
 	if (completion != nil) {
 		/* Call the handler on the main thread.
@@ -524,10 +534,10 @@ static const char *dwb_socket_path(void)
 		 * evaluate is synchronous and may have run the engine's loop, so
 		 * re-entering the completion here could re-enter the guest from inside
 		 * a transport call. */
-		typedef void (^DWBCompletion)(id);
+		typedef void (^DWBCompletion)(id result, NSError *error);
 		DWBCompletion handler = (DWBCompletion)[completion copy];
 		dispatch_async(dispatch_get_main_queue(), ^{
-			handler(result);
+			handler(result, failure);
 		});
 		[handler release];
 	}
