@@ -1903,7 +1903,7 @@ int main(int argc, char ** argv)
 			}
 			int shellHandle = -1;
 			pid_t shellspawn = g_nonroot ? shellspawnPeer(&shellHandle) : 0;
-			if (g_nonroot && shellHandle < 0)
+			if (g_nonroot && shellspawn > 0 && shellHandle < 0)
 			{
 				close(handle);
 				fprintf(stderr, "Cannot obtain nonroot shellspawn process handle; shutdown refused.\n");

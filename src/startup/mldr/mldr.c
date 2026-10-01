@@ -240,7 +240,16 @@ int main(int argc, char** argv, char** envp)
 	else
 	{
 		filename = (char*) __builtin_alloca(strlen(argv[1])+1);
-		strcpy(filename, argv[1]);
+		char* bang = strchr(argv[1], '!');
+		if (bang != NULL)
+		{
+			strcpy(filename, bang + 1);
+			mldr_load_results.executable_path_is_host_path = true;
+		}
+		else
+		{
+			strcpy(filename, argv[1]);
+		}
 	}
 
 	// allow any process to ptrace us
