@@ -24,6 +24,13 @@ VibeDarling is a development fork of [Darling](https://github.com/darlinghq/darl
 a compatibility layer for running macOS software on Linux without a virtual machine.
 It builds on the work of the Darling project and the open-source components it integrates.
 
+“Vibe” refers to **vibe coding**: AI coding agents are the primary development
+tools used in this fork. VibeDarling provides a home for that development approach,
+with its own testing and review process. Upstream Darling has
+[expressed reservations about AI-generated contributions](https://github.com/darlinghq/darling/pull/1753#issuecomment-4949512178),
+while leaving room to review smaller changes with supporting tests. Contributions
+to this fork are reviewed here; acceptance here does not imply upstream acceptance.
+
 ## Quick links
 
 [Releases](https://github.com/VibeDarling/darling/releases) &bull;
