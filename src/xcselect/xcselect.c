@@ -199,6 +199,7 @@ have_path:
 
 int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 {
+	setenv("SYSTEM_VERSION_COMPAT", "1", 1);
 	char dev_dir[1024];
 	bool is_cmdline;
 
