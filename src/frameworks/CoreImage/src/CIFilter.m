@@ -35,17 +35,17 @@ NSString * const kCIOutputImageKey = @"outputImage";
 NSString * const kCIApplyOptionDefinition = @"definition";
 
 NSString * const kCIAttributeClass = @"CIAttributeClass";
-NSString * const kCIAttributeDefault = @"default";
+NSString * const kCIAttributeDefault = @"CIAttributeDefault";
 NSString * const kCIAttributeDisplayName = @"CIAttributeDisplayName";
 NSString * const kCIAttributeFilterDisplayName = @"CIAttributeFilterDisplayName";
 NSString * const kCIAttributeFilterName = @"CIAttributeFilterName";
 NSString * const kCIAttributeMax = @"CIAttributeMax";
 NSString * const kCIAttributeMin = @"CIAttributeMin";
-NSString * const kCIAttributeSliderMin = @"sliderMin";
-NSString * const kCIAttributeSliderMax = @"sliderMax";
+NSString * const kCIAttributeSliderMin = @"CIAttributeSliderMin";
+NSString * const kCIAttributeSliderMax = @"CIAttributeSliderMax";
 NSString * const kCIAttributeType = @"CIAttributeType";
 
-const CIFormat kCIFormatARGB8 = 26;
+const CIFormat kCIFormatARGB8 = 0;
 const CIFormat kCIFormatRGBA8 = 24;
 const CIFormat kCIFormatBGRA8 = 27;
 const CIFormat kCIFormatABGR8 = 28;
