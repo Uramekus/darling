@@ -11,7 +11,7 @@ if (COMPONENT_cli)
 	add_darling_executable(softwareupdate softwareupdate.c)
 	add_darling_executable(spctl spctl.c)
 
-	install(TARGETS sw_vers sudo codesign dsmemberutil DESTINATION libexec/darling/usr/bin)
+	install(TARGETS sw_vers sudo codesign dsmemberutil system_profiler DESTINATION libexec/darling/usr/bin)
 	install(TARGETS softwareupdate spctl system_profiler DESTINATION libexec/darling/usr/sbin)
 
 	target_link_libraries(sw_vers CoreFoundation)
