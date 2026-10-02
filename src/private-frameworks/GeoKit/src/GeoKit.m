@@ -19,7 +19,7 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
-#import <GeoKit/GeoKit.h>
+#import "../include/GeoKit/GeoKit.h"
 
 /* No Core Data stack is present, so both contexts are absent. */
 id GEOManagedObjectContext = NULL;
