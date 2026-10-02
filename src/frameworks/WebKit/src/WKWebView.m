@@ -660,7 +660,27 @@ static const char *dwb_socket_path(void)
 		BOOL raw = (fh.format == DWB_PIXEL_RGB || fh.format == DWB_PIXEL_RGBA ||
 		            fh.format == DWB_PIXEL_BGRA || fh.format == DWB_PIXEL_ARGB);
 		if (!raw) {
-			_host->pendingError = @"compressed frame: the host must decode before display";
+			/* The host sends JPEG because the Chromium screencast backend cannot
+			 * cheaply hand over raw pixels. AppKit decodes it for us, so there is no
+			 * reason to refuse: NSBitmapImageRep's initialiser from data does the
+			 * work and yields a rep that draws like any other. */
+			NSData *compressed = (in_shm && _host->shmBase != NULL)
+				? [NSData dataWithBytes:src length:fh.size]
+				: [NSData dataWithBytes:(const void *)pixels length:fh.size];
+			NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithData:compressed];
+			if (rep == nil || [rep pixelsWide] <= 0) {
+				_host->pendingError = [NSString stringWithFormat:
+					@"could not decode a %u byte frame", fh.size];
+			}
+			else if ([_remoteView lockFocusIfCanDraw]) {
+				NSImage *image = (NSImage *)rep;
+				[image drawInRect: [_remoteView bounds]
+				         fromRect: NSMakeRect(0, 0, [rep pixelsWide], [rep pixelsHigh])
+				        operation: NSCompositeSourceOver
+				         fraction: 1.0];
+				[_remoteView unlockFocus];
+			}
+			[rep release];
 		} else {
 			NSUInteger comps = (fh.format == DWB_PIXEL_RGB) ? 3 : 4;
 			unsigned char *plane = (unsigned char *)src;
