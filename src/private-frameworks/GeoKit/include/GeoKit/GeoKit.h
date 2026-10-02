@@ -16,7 +16,9 @@
 extern id GEOManagedObjectContext;
 extern id GEODefaultManagedObjectContext;
 
-@interface GeoKitPlace : NSObject
+@interface GeoKitPlace : NSObject {
+	NSString* _name;
+}
 @property (readonly, copy) NSString* name;
 @property (readonly) double latitude;
 @property (readonly) double longitude;
