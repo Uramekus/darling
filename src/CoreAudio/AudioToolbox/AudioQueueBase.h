@@ -38,6 +38,7 @@ protected:
 	void* m_userData;
 	CFRunLoopRef m_runloop = nullptr;
 	CFStringRef m_runloopMode = nullptr;
+	CFRunLoopSourceRef m_runloopSource = nullptr;
 	UInt32 m_flags;
 	bool m_running = false;
 	bool m_paused = false;

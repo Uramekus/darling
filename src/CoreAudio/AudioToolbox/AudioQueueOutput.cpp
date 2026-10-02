@@ -250,5 +250,11 @@ OSStatus AudioQueueOutput::fillOutput(AudioBufferList* outOutputData)
 			m_callback(m_userData, this, buf);
 	}
 
+	if (!completed.empty() && m_runloop && m_runloopSource)
+	{
+		CFRunLoopSourceSignal(m_runloopSource);
+		CFRunLoopWakeUp(m_runloop);
+	}
+
 	return noErr;
 }

@@ -239,46 +239,6 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 
 			pa_context_set_state_callback(m_context, paContextStateCB, m_loop.get());
 
-			// Ensure PULSE_COOKIE is set so wrapped ELF libpulse can find the host cookie
-			if (!getenv("PULSE_COOKIE"))
-			{
-				const char* cookieHomes[] = {
-					getenv("HOME"),
-					getenv("TERMUX__HOME"),
-					getenv("TERMUX_HOME")
-				};
-				for (size_t i = 0; i < sizeof(cookieHomes)/sizeof(cookieHomes[0]); ++i)
-				{
-					const char* ch = cookieHomes[i];
-					if (!ch || !ch[0]) continue;
-					char cookieHostPath[512];
-					char cookieContainerPath[512];
-					snprintf(cookieHostPath, sizeof(cookieHostPath), "%s/.config/pulse/cookie", ch);
-					snprintf(cookieContainerPath, sizeof(cookieContainerPath), "/Volumes/SystemRoot%s", cookieHostPath);
-					if (access(cookieContainerPath, R_OK) == 0 || access(cookieHostPath, R_OK) == 0)
-					{
-						setenv("PULSE_COOKIE", cookieHostPath, 0);
-						break;
-					}
-				}
-
-				if (!getenv("PULSE_COOKIE"))
-				{
-					const char* user = getenv("USER");
-					if (user && user[0])
-					{
-						char cookieHostPath[512];
-						char cookieContainerPath[512];
-						snprintf(cookieHostPath, sizeof(cookieHostPath), "/home/%s/.config/pulse/cookie", user);
-						snprintf(cookieContainerPath, sizeof(cookieContainerPath), "/Volumes/SystemRoot%s", cookieHostPath);
-						if (access(cookieContainerPath, R_OK) == 0 || access(cookieHostPath, R_OK) == 0)
-						{
-							setenv("PULSE_COOKIE", cookieHostPath, 0);
-						}
-					}
-				}
-			}
-
 			const char* server = getenv("PULSE_SERVER");
 			char serverBuf[512] = {0};
 			if (!server)

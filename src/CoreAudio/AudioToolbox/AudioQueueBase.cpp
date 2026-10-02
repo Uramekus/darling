@@ -9,18 +9,32 @@ AudioQueue::AudioQueue(const AudioStreamBasicDescription* format, void* userData
 : m_format(*format), m_userData(userData), m_flags(flags)
 {
 	if (runloop)
+	{
 		m_runloop = (CFRunLoopRef) CFRetain(runloop);
-	else
-		m_runloop = nullptr;
+		m_runloopMode = runloopMode ? (CFStringRef) CFRetain(runloopMode) : (CFStringRef) CFRetain(kCFRunLoopDefaultMode);
 
-	if (runloopMode)
-		m_runloopMode = (CFStringRef) CFRetain(runloopMode);
+		CFRunLoopSourceContext context = {0};
+		m_runloopSource = CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &context);
+		if (m_runloopSource)
+		{
+			CFRunLoopAddSource(m_runloop, m_runloopSource, m_runloopMode);
+		}
+	}
 	else
+	{
+		m_runloop = nullptr;
 		m_runloopMode = nullptr;
+	}
 }
 
 AudioQueue::~AudioQueue()
 {
+	if (m_runloop && m_runloopSource)
+	{
+		CFRunLoopRemoveSource(m_runloop, m_runloopSource, m_runloopMode);
+		CFRelease(m_runloopSource);
+		m_runloopSource = nullptr;
+	}
 	if (m_runloop)
 		CFRelease(m_runloop);
 	if (m_runloopMode)
