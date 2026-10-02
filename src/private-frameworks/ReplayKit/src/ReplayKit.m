@@ -1,67 +1,41 @@
 /*
 	ReplayKit.private
 
-	Apple's private framework behind screen recording and playback. No app here
-	links it directly, but OpenSwiftUI's rendering internals use its display-list
-	types, so SwiftUI cannot link without them: CAHostingLayerPlatformDefinition and
-	RenderBoxView reference RBDevice and RBLayer, DisplayList and Image reference
-	RBAnimation, GraphicsImage references RBSymbolAnimator.
+	Apple's private framework behind screen recording and playback. No app links it
+	directly, but OpenSwiftUI's rendering internals use its display-list types, so
+	SwiftUI cannot link without them.
 
-	RBLayer and RBDevice are the platform pair: a layer that draws into a device, with
-	the display list the drawing is recorded into. Recording a display list needs a
-	recording context, and there is no recording here, so the display list is empty.
-	An empty display list is the state a renderer already handles -- it draws nothing
-	and the caller composites the result -- whereas inventing rendered geometry would
-	be worse than drawing nothing, because the caller would composite a picture of
-	something that was never captured.
-
-	RBAnimation is a named animation curve. Nothing is animating without a recording
-	to animate into, so the duration is zero: a zero-duration animation is complete
-	on its first frame, which is the state a caller has to handle anyway when an
-	animation is skipped.
-
-	RBSymbolAnimator advances symbol animations over time. With no time source and
-	nothing to animate, it reports that it has finished rather than looping.
+	RBLayer and RBDevice record drawing into a display list. There is no recording
+	context here, so the display list is empty -- the state a renderer already
+	handles, and a better answer than inventing rendered geometry the caller would
+	then composite.
 
 	Every class is over NSObject: AppKit and QuartzCore are not available to name a
-	real superclass from here, and CALayer in particular cannot be linked against on
-	this system. The class symbols are what the linker needs, and they are emitted
-	identically either way.
+	real superclass from here. The class symbols are emitted either way.
 */
 
 #import <Foundation/Foundation.h>
+#import "../include/ReplayKit/ReplayKit.h"
 
 /* ---- Display list ------------------------------------------------------------- */
 
-/* The recorded drawing operations for a device. */
-@interface RBDisplayList : NSObject
-
-/* An empty display list: nothing was recorded, so there is nothing to replay. */
-+ (RBDisplayList*)emptyDisplayList;
-
-/* Append the current contents of a view. No recording context exists here, so this
-   records nothing and the list stays empty. */
-- (void)appendView:(id)view;
-
-- (NSUInteger)operationCount;
-
-@end
-
 @implementation RBDisplayList
-{
-	NSMutableArray* _operations;
-}
 + (RBDisplayList*)emptyDisplayList
 {
-	return [[RBDisplayList alloc] init];
+	return [[[RBDisplayList alloc] init] autorelease];
 }
 - (instancetype)init
 {
 	if ((self = [super init]))
 	{
-		_operations = [NSMutableArray array];
+		_operations = [[NSMutableArray alloc] init];
 	}
 	return self;
+}
+- (void)dealloc
+{
+	[_operations release];
+	[super dealloc];
 }
 - (void)appendView:(id)view
 {
@@ -75,46 +49,23 @@
 
 /* ---- Device ------------------------------------------------------------------ */
 
-/* A rendering destination: width, height, and a display list to draw into. */
-@interface RBDevice : NSObject
-
-+ (instancetype)deviceWithWidth:(NSUInteger)width height:(NSUInteger)height;
-
-@property (readonly) NSUInteger width;
-@property (readonly) NSUInteger height;
-@property (readonly, strong) RBDisplayList* displayList;
-
-/* Flushes the device's drawing. Nothing was recorded, so there is nothing to
-   submit and this is a no-op rather than an error. */
-- (void)flush;
-
-@end
-
 @implementation RBDevice
-{
-	NSUInteger _width;
-	NSUInteger _height;
-	RBDisplayList* _displayList;
-}
+@synthesize width = _width;
+@synthesize height = _height;
+@synthesize displayList = _displayList;
+
 + (instancetype)deviceWithWidth:(NSUInteger)width height:(NSUInteger)height
 {
-	RBDevice* device = [[self alloc] init];
+	RBDevice* device = [[[self alloc] init] autorelease];
 	device->_width = width;
 	device->_height = height;
-	device->_displayList = [RBDisplayList emptyDisplayList];
+	device->_displayList = [[RBDisplayList emptyDisplayList] retain];
 	return device;
 }
-- (NSUInteger)width
+- (void)dealloc
 {
-	return _width;
-}
-- (NSUInteger)height
-{
-	return _height;
-}
-- (RBDisplayList*)displayList
-{
-	return _displayList;
+	[_displayList release];
+	[super dealloc];
 }
 - (void)flush
 {
@@ -123,88 +74,58 @@
 
 /* ---- Layer ------------------------------------------------------------------- */
 
-/* A layer that records into a device's display list. */
-@interface RBLayer : NSObject
-
-- (instancetype)initWithDevice:(RBDevice*)device;
-
-/* Asks the layer to record itself into its device's display list. Without a
-   recording context this records nothing, which leaves the display list empty. */
-- (void)display;
-
-@property (readonly, strong) RBDevice* device;
-
-@end
-
 @implementation RBLayer
-{
-	RBDevice* _device;
-}
+@synthesize device = _device;
+
 - (instancetype)initWithDevice:(RBDevice*)device
 {
 	if ((self = [super init]))
 	{
-		_device = device;
+		_device = [device retain];
 	}
 	return self;
 }
-- (RBDevice*)device
+- (void)dealloc
 {
-	return _device;
+	[_device release];
+	[super dealloc];
 }
 - (void)display
 {
 }
 @end
 
-/* ---- Animation ---------------------------------------------------------------- */
-
-/* A named animation curve applied to a recording. */
-@interface RBAnimation : NSObject
-
-+ (instancetype)animationWithName:(NSString*)name duration:(double)duration;
-
-@property (readonly, copy) NSString* name;
-@property (readonly) double duration;
-
-@end
+/* ---- Animation --------------------------------------------------------------- */
 
 @implementation RBAnimation
-{
-	NSString* _name;
-	double _duration;
-}
+@synthesize name = _name;
+@synthesize duration = _duration;
+
 + (instancetype)animationWithName:(NSString*)name duration:(double)duration
 {
-	RBAnimation* animation = [[self alloc] init];
+	RBAnimation* animation = [[[self alloc] init] autorelease];
 	animation->_name = [name copy];
 	animation->_duration = duration;
 	return animation;
 }
-- (NSString*)name
+- (void)dealloc
 {
-	return _name;
-}
-- (double)duration
-{
-	return _duration;
+	[_name release];
+	[super dealloc];
 }
 @end
 
-/* Advances symbol animations. */
-@interface RBSymbolAnimator : NSObject
-
-/* Advances by a time interval. Reports YES while more frames remain, so a caller
-   driving this loop terminates: with no recorded animation there are no frames
-   left after the first step. */
-- (BOOL)advanceBy:(double)interval;
-
-@end
+/* ---- Animator ---------------------------------------------------------------- */
 
 @implementation RBSymbolAnimator
 - (BOOL)advanceBy:(double)interval
 {
 	(void)interval;
-	return NO;
+	if (_didAdvance)
+	{
+		return NO;
+	}
+	_didAdvance = YES;
+	return YES;
 }
 @end

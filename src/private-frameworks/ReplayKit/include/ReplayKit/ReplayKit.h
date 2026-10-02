@@ -22,7 +22,9 @@
 @class RBDevice;
 @class RBDisplayList;
 
-@interface RBDisplayList : NSObject
+@interface RBDisplayList : NSObject {
+	NSMutableArray* _operations;
+}
 
 /* An empty display list: nothing was recorded, so there is nothing to replay. */
 + (RBDisplayList*)emptyDisplayList;
@@ -35,7 +37,11 @@
 
 @end
 
-@interface RBDevice : NSObject
+@interface RBDevice : NSObject {
+	NSUInteger _width;
+	NSUInteger _height;
+	RBDisplayList* _displayList;
+}
 
 + (instancetype)deviceWithWidth:(NSUInteger)width height:(NSUInteger)height;
 
@@ -49,7 +55,9 @@
 
 @end
 
-@interface RBLayer : NSObject
+@interface RBLayer : NSObject {
+	RBDevice* _device;
+}
 
 - (instancetype)initWithDevice:(RBDevice*)device;
 
@@ -61,7 +69,10 @@
 
 @end
 
-@interface RBAnimation : NSObject
+@interface RBAnimation : NSObject {
+	NSString* _name;
+	double _duration;
+}
 
 + (instancetype)animationWithName:(NSString*)name duration:(double)duration;
 
@@ -70,7 +81,9 @@
 
 @end
 
-@interface RBSymbolAnimator : NSObject
+@interface RBSymbolAnimator : NSObject {
+	BOOL _didAdvance;
+}
 
 /* Advances by a time interval. Reports YES while more frames remain, so a caller
    driving this loop terminates: with no recorded animation there are no frames
