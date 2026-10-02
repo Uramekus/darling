@@ -30,24 +30,32 @@ extern NSString* const OBPrivacyiTunesStoreIdentifier;
 + (NSArray*)privacyServiceIdentifiers;
 @end
 
-@interface OBTemplateView : NSObject
+@interface OBTemplateView : NSObject {
+	NSUInteger templateIdentifier;
+}
 @property (nonatomic) NSUInteger templateIdentifier;
 @end
 
-@interface OBTemplatePartBulletList : NSObject
+@interface OBTemplatePartBulletList : NSObject {
+	NSMutableArray* _bullets;
+}
 - (void)addBullet:(NSString*)text;
 - (void)removeAllBullets;
 @property (readonly) NSUInteger bulletCount;
 @end
 
-@interface OBBoldTrayButton : NSObject
+@interface OBBoldTrayButton : NSObject {
+	NSString* _title;
+}
 - (void)setTitle:(NSString*)title;
 @end
 
 @interface OBLinkTrayButton : OBBoldTrayButton
 @end
 
-@interface OBBulletedListItemLinkButton : OBBoldTrayButton
+@interface OBBulletedListItemLinkButton : OBBoldTrayButton {
+	NSURL* _url;
+}
 - (void)setDestinationURL:(NSURL*)url;
 @end
 
@@ -55,7 +63,10 @@ extern NSString* const OBPrivacyiTunesStoreIdentifier;
 - (void)setBullets:(NSArray*)bullets;
 @end
 
-@interface OBTableWelcomeController : NSObject
+@interface OBTableWelcomeController : NSObject {
+	NSString* title;
+	NSString* body;
+}
 @property (nonatomic, copy) NSString* title;
 @property (nonatomic, copy) NSString* body;
 @end
@@ -65,7 +76,9 @@ extern NSString* const OBPrivacyiTunesStoreIdentifier;
 - (void)finish;
 @end
 
-@interface OBNavigationController : NSObject
+@interface OBNavigationController : NSObject {
+	NSMutableArray* _stack;
+}
 - (void)pushViewController:(id)controller;
 - (void)popViewController;
 @property (readonly) NSUInteger viewControllerCount;
@@ -75,13 +88,17 @@ extern NSString* const OBPrivacyiTunesStoreIdentifier;
 - (void)openServiceWithIdentifier:(NSString*)identifier;
 @end
 
-@interface OBPrivacyPresenter : NSObject
+@interface OBPrivacyPresenter : NSObject {
+	NSString* _bundleIdentifier;
+}
 + (instancetype)presenterForBundleIdentifier:(NSString*)bundleIdentifier;
 - (NSArray*)servicesRequiringConsent;
 - (BOOL)presentConsentForService:(NSString*)identifier error:(NSError**)error;
 @end
 
-@interface OBPrivacyFlow : NSObject
+@interface OBPrivacyFlow : NSObject {
+	NSString* _bundleIdentifier;
+}
 + (instancetype)flowWithBundleIdentifier:(NSString*)bundleIdentifier;
 - (BOOL)run:(NSError**)error;
 @end
