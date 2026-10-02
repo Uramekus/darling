@@ -22,13 +22,17 @@
 
 @class QLPreviewDocument;
 
-@interface QLPreviewDocument : NSObject
+@interface QLPreviewDocument : NSObject {
+	NSURL* _fileURL;
+}
 - (instancetype)initWithFileURL:(NSURL*)url;
 @property (readonly, copy) NSURL* fileURL;
 @property (readonly) BOOL isReadable;
 @end
 
-@interface QLPreviewView : NSObject
+@interface QLPreviewView : NSObject {
+	QLPreviewDocument* _document;
+}
 - (void)setPreviewDocument:(QLPreviewDocument*)document;
 - (QLPreviewDocument*)previewDocument;
 @end
@@ -39,7 +43,9 @@
 - (void)orderOut:(id)sender;
 @end
 
-@interface QLSeamlessDocumentOpener : NSObject
+@interface QLSeamlessDocumentOpener : NSObject {
+	QLPreviewDocument* _document;
+}
 + (id)openerForDocument:(QLPreviewDocument*)document;
 - (BOOL)openDocument:(NSError**)error;
 @end
