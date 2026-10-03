@@ -44,6 +44,7 @@
 	NSTimer *_frameTimer;
 	id _navigationDelegate;
 	BOOL _allowsBackForwardNavigationGestures;
+	BOOL _allowsLinkPreview;
 	BOOL _loading;
 	NSString *_title;
 }

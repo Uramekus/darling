@@ -785,6 +785,33 @@ static const char *dwb_socket_path(void)
 	return _navigationDelegate;
 }
 
+/* macOS 10.14+. Clients set it during setup; a missing selector is an uncaught
+ * NSException at launch. Link previews are the host browser's business, so the value is
+ * recorded and sent with the rest of the configuration rather than acted on here. */
+- (BOOL) allowsLinkPreview
+{
+	return _allowsLinkPreview;
+}
+
+- (void) setAllowsLinkPreview: (BOOL)allows
+{
+	_allowsLinkPreview = allows;
+}
+
+/* Clients set a number of NSView appearance properties through key-value coding, and a
+ * key with no accessor is an uncaught NSException, not a no-op. YouLearn v0.3.1 sets
+ * drawsBackground among them and died on it. NSView here does not implement these, and
+ * the backing view is drawn by the host engine regardless, so the values are accepted
+ * and ignored. Same reasoning as the guarded [super setFrame:] below. */
+- (void) setDrawsBackground: (BOOL)flag
+{
+}
+
+- (BOOL) drawsBackground
+{
+	return YES;
+}
+
 - (void) setNavigationDelegate: (id)delegate
 {
 	[_navigationDelegate release];
