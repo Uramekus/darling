@@ -183,11 +183,15 @@ static const char *dwb_socket_path(void)
 		}
 	}
 
-	/* A real backing view, so the frame can be blitted into it. */
+	/* A real backing view, so the frame can be blitted into it. Kept at +1 for
+	 * the lifetime of the web view and released in dealloc: releasing it here
+	 * left both this ivar and _host->containerView dangling, which was invisible
+	 * until a host was attached and the frame timer actually reached
+	 * -lockFocusIfCanDraw - the freed view had by then been reused for an
+	 * NSArray, so the message went to -[__NSCFArray lockFocusIfCanDraw]. */
 	_remoteView = [[NSView alloc] initWithFrame: frame];
 	[_remoteView setAutoresizesSubviews: YES];
 	_host->containerView = _remoteView;
-	[_remoteView release];
 
 	return self;
 }
@@ -354,6 +358,7 @@ static const char *dwb_socket_path(void)
 
 - (void) dealloc
 {
+	[_remoteView release];
 	[_host release];
 	[_lastURL release];
 	[_configuration release];
