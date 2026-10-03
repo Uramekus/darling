@@ -22,3 +22,11 @@
 @interface WKScriptMessage : NSObject
 
 @end
+
+@class WKWebView;
+
+@interface WKScriptMessage (DWBGuest)
+@property(nonatomic, readonly, copy) id body;
+@property(nonatomic, readonly, copy) NSString *name;
+@property(nonatomic, readonly, copy) WKWebView *webView;
+@end

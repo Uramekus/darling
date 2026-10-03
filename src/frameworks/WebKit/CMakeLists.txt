@@ -140,8 +140,6 @@ add_framework(WebKit
         src/WKTextInputWindowController.m
         src/WKTypeRefWrapper.m
         src/WKURLSchemeTaskImpl.m
-        src/WKUserContentController.m
-        src/WKUserScript.m
         src/WKViewData.m
         src/WKView.m
         src/WKViewLayoutStrategy.m
@@ -163,7 +161,6 @@ add_framework(WebKit
         src/WKWebView.m
         src/dwb-siblings.m
         src/dwb_client.c
-        src/WKWebViewConfiguration.m
         src/WKWindowFeatures.m
 
     DEPENDENCIES
@@ -171,4 +168,11 @@ add_framework(WebKit
         objc
         Foundation
         CFNetwork
+        # The guest is a view: an NSView subclass that blits frames
+        # through an NSBitmapImageRep and names NSDeviceRGBColorSpace.
+        # Without AppKit the framework compiles and then fails to link on
+        # exactly those three symbols, which is what its first real build
+        # did. Same idiom as Automator, which also uses NSView.
+        AppKit
+        CoreGraphics
 )
