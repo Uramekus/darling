@@ -60,7 +60,10 @@ static int recv_msg(dwb_client *c, dwb_header *h, char *payload, size_t cap)
 		return -1;
 	if (h->magic != DWB_MAGIC || h->version != DWB_PROTO_VERSION)
 		return -1;
-	if (h->length > cap)
+	/* Strictly less than cap, not at most: the terminator below writes
+	 * payload[h->length], so a payload of exactly cap bytes would write one
+	 * past the end of a cap-byte buffer. */
+	if (h->length >= cap)
 		return -1;
 	if (h->length && recv_all(c->fd, payload, h->length) != 0)
 		return -1;
@@ -601,7 +604,14 @@ int dwb_client_frame(dwb_client *c, dwb_frame_header *out, const void **pixels,
                      size_t *pixel_bytes, void **shm_map, size_t *shm_size,
                      int *in_shm)
 {
-	char *buf = malloc(sizeof(dwb_frame_header));
+	/* Sized to the capacity it is told, not to the frame header. The two were
+	 * different: this used to malloc(sizeof(dwb_frame_header)) - 32 bytes,
+	 * asserted in protocol.h - and hand recv_msg a cap of 4096, so any host
+	 * reply longer than 32 bytes wrote up to 4096 bytes into a 32-byte heap
+	 * allocation. The frame reply is exactly 32 bytes, so the terminator alone
+	 * already overflowed by one, and an error event's JSON overflowed it by
+	 * however long the message was. */
+	char *buf = malloc(4097);
 	if (!buf)
 		return -1;
 	if (send_msg(c, DWB_MSG_FRAME, NULL, 0) != 0) {
