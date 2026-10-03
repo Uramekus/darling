@@ -22,3 +22,8 @@
 @interface WKNavigationResponse : NSObject
 
 @end
+
+@interface WKNavigationResponse (DWBGuest)
+@property(nonatomic, readonly, getter=isForMainFrame) BOOL forMainFrame;
+@property(nonatomic, readonly, copy) NSURLResponse *response;
+@end

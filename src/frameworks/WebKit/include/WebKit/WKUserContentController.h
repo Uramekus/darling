@@ -27,3 +27,17 @@
 }
 
 @end
+
+@class WKUserScript;
+
+@interface WKUserContentController (DWBGuest)
+- (void)addScriptMessageHandler:(id)scriptMessageHandler name:(NSString *)name;
+- (void)removeScriptMessageHandlerForName:(NSString *)name;
+- (void)addUserScript:(WKUserScript *)userScript;
+- (void)removeAllUserScripts;
+@end
+
+@protocol WKScriptMessageHandler <NSObject>
+- (void)userContentController:(WKUserContentController *)userContentController
+      didReceiveScriptMessage:(WKScriptMessage *)message;
+@end
