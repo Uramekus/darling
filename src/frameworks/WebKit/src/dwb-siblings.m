@@ -290,6 +290,7 @@ typedef NS_ENUM(NSInteger, DWBInjectionTime) {
 	BOOL _allowsAirPlayForMediaPlayback;
 	BOOL _allowsPictureInPictureMediaPlayback;
 	BOOL _allowsInlineMediaPlayback;
+	BOOL _fullScreenEnabled;
 }
 @end
 
@@ -310,6 +311,19 @@ typedef NS_ENUM(NSInteger, DWBInjectionTime) {
 - (void) setMediaTypesRequiringUserActionForPlayback: (NSUInteger)types
 {
 	_mediaTypesRequiringUserAction = types;
+}
+
+/* Present because clients set it through key-value coding, and a missing key is an
+ * uncaught NSException that kills the app at launch. The host drives fullscreen, so
+ * this records the request and leaves the behaviour to it. */
+- (BOOL) fullScreenEnabled
+{
+	return _fullScreenEnabled;
+}
+
+- (void) setFullScreenEnabled: (BOOL)enabled
+{
+	_fullScreenEnabled = enabled;
 }
 
 - (BOOL) allowsAirPlayForMediaPlayback
