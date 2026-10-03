@@ -506,13 +506,22 @@ static const char *dwb_socket_path(void)
 {
 	char *value = NULL;
 	NSString *result = nil;
+	NSError *error = nil;
 	if (_host->client.fd < 0) {
-		result = nil;
+		error = [NSError errorWithDomain: @"DarlingWebKitHost"
+		                            code: 1
+		                        userInfo: [NSDictionary dictionaryWithObject:
+			@"darling-webkit-host is not reachable, so the script did not run"
+		                                                             forKey: NSLocalizedDescriptionKey]];
 	} else if (dwb_client_eval(&_host->client, [script UTF8String], &value) == 0) {
 		result = value ? [NSString stringWithUTF8String: value] : nil;
 		free(value);
 	} else {
-		result = nil;
+		error = [NSError errorWithDomain: @"DarlingWebKitHost"
+		                            code: 1
+		                        userInfo: [NSDictionary dictionaryWithObject:
+			[NSString stringWithUTF8String: _host->client.error]
+		                                                             forKey: NSLocalizedDescriptionKey]];
 	}
 	if (completion != nil) {
 		/* Call the handler on the main thread.
@@ -523,11 +532,15 @@ static const char *dwb_socket_path(void)
 		 * invoked by calling it. The dispatch is needed because the host's
 		 * evaluate is synchronous and may have run the engine's loop, so
 		 * re-entering the completion here could re-enter the guest from inside
-		 * a transport call. */
-		typedef void (^DWBCompletion)(id);
+		 * a transport call. The handler takes (result, error), which is the
+		 * signature WebKit declares and every caller is compiled against:
+		 * declaring it here with one argument and calling handler(result) left
+		 * the error register holding whatever libdispatch had put there, so a
+		 * caller that tested `if (error)` messaged a function pointer. */
+		typedef void (^DWBCompletion)(id, NSError *);
 		DWBCompletion handler = (DWBCompletion)[completion copy];
 		dispatch_async(dispatch_get_main_queue(), ^{
-			handler(result);
+			handler(result, error);
 		});
 		[handler release];
 	}
