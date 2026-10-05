@@ -358,14 +358,19 @@ static const char *dwb_socket_path(void)
 
 - (void) dealloc
 {
+	/* Stop the timer before anything it touches goes away. NSTimer retains its
+	 * target, so an invalidated-but-still-armed timer fires against a freed _host
+	 * and writes through it - which showed up as pendingError holding an unrelated
+	 * object, such as a font glyph cache entry. */
+	[_frameTimer invalidate];
+	[_frameTimer release];
+
 	[_remoteView release];
 	[_host release];
 	[_lastURL release];
 	[_configuration release];
 	[_navigationDelegate release];
 	[_title release];
-	[_frameTimer invalidate];
-	[_frameTimer release];
 	[super dealloc];
 }
 
