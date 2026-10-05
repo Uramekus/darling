@@ -249,7 +249,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 				uintptr_t bump = ((uintptr_t)mmap_hint + mmapSize + 0xffffff) & ~0xffffffULL;
 				if (bump >= 0x800000000000ULL)
 					break;
-				next_low_addr = bump;
+				__atomic_store_n(&next_low_addr, bump, __ATOMIC_RELAXED);
 				mmap_hint = (void*)bump;
 			}
 		} else

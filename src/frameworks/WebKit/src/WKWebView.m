@@ -820,7 +820,6 @@ static const char *dwb_socket_path(void)
 - (void) setNavigationDelegate: (id)delegate
 {
 	[_navigationDelegate release];
-	[_title release];
 	_navigationDelegate = [delegate retain];
 }
 
