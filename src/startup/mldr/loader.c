@@ -215,7 +215,10 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 		}
 
 		void* mmap_hint = (void*) base;
-#if defined(__aarch64__) || defined(__arm64__)
+		/* Set when we allocate the slot ourselves rather than honouring a
+		 * preferred address the binary asked for. */
+		int managed_slot = 0;
+#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
 		/* macOS ObjC FAST_DATA_MASK is 0x00007ffffffffff8 — only 47 bits of
 		 * data pointer. On Linux ARM64 the kernel happily returns 48-bit VAs
 		 * (e.g. 0xfe..) which then get truncated by the mask to a bogus
@@ -227,16 +230,40 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
          * above) available. dyld reserves its actual cache span before mapping
          * files, so an incompatible future layout fails without overwriting us. */
 		static uintptr_t next_low_addr = 0x1000000000ULL; /* 64 GiB; below the ObjC 47-bit ceiling */
-		if (base == 0)
+		if (base == 0) {
 			mmap_hint = (void*)__atomic_load_n(&next_low_addr, __ATOMIC_RELAXED);
+			managed_slot = 1;
+		}
 #endif
-		slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
+		/* When the slot is ours, reserve exactly where we asked. A bare hint lets
+		 * the kernel return a different address, which leaves the slot allocator
+		 * bookkeeping describing a range it no longer holds. */
+#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
+		if (managed_slot) {
+			while (1) {
+				slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE,
+					MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | MAP_FIXED_NOREPLACE, -1, 0);
+				if (slide != (uintptr_t)MAP_FAILED || errno != EEXIST)
+					break;
+				/* Slot occupied; advance to next 16 MiB boundary and retry */
+				uintptr_t bump = ((uintptr_t)mmap_hint + mmapSize + 0xffffff) & ~0xffffffULL;
+				if (bump >= 0x800000000000ULL)
+					break;
+				next_low_addr = bump;
+				mmap_hint = (void*)bump;
+			}
+		} else
+#endif
+		{
+			slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE,
+				MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
+		}
 		if (slide == (uintptr_t)MAP_FAILED)
 		{
 			fprintf(stderr, "Cannot mmap anonymous memory range: %s\n", strerror(errno));
 			exit(1);
 		}
-#if defined(__aarch64__) || defined(__arm64__)
+#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
 		/* If we ended up above 2^47 anyway, retry with MAP_FIXED_NOREPLACE in the low
 		 * range so the slid address stays reachable through FAST_DATA_MASK. */
 		if (slide >= 0x800000000000ULL) {
@@ -250,9 +277,13 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 				exit(1);
 			}
 		}
-		/* Bump the slot for the next allocation, leaving headroom (atomic CAS). */
+		/* Bump the slot for the next allocation, leaving headroom (atomic CAS).
+		 * Derive it from the slot we requested, not from wherever the kernel
+		 * placed the mapping: had that landed below the current slot, comparing
+		 * against it made this whole update a no-op and handed the next load the
+		 * same range, with the reservation unmapped immediately below. */
 		if (base == 0) {
-			uintptr_t target_next = (slide + mmapSize + 0xffffff) & ~0xffffffULL;
+			uintptr_t target_next = ((uintptr_t)mmap_hint + mmapSize + 0xffffff) & ~0xffffffULL;
 			uintptr_t cur = __atomic_load_n(&next_low_addr, __ATOMIC_RELAXED);
 			while (target_next > cur && !__atomic_compare_exchange_n(&next_low_addr, &cur, target_next, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 				// retry CAS
