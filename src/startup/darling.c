@@ -2328,9 +2328,12 @@ static void pushShellspawnCommandFDs(int sockfd, shellspawn_cmd_type_t type, con
 	}
 }
 
+static void restoreTermios(void);
 static int _shSockfd = -1;
 static struct termios orig_termios;
 static int pty_master;
+static volatile int sigint_count = 0;
+
 static void signalHandler(int signo)
 {
 	// printf("Received signal %d\n", signo);
@@ -2342,8 +2345,25 @@ static void signalHandler(int signo)
 
 		ioctl(0, TIOCGWINSZ, &win);
 		ioctl(pty_master, TIOCSWINSZ, &win);
+		return;
 	}
-	
+
+	if (signo == SIGTERM || signo == SIGHUP || signo == SIGQUIT)
+	{
+		restoreTermios();
+		exit(128 + signo);
+	}
+
+	if (signo == SIGINT)
+	{
+		sigint_count++;
+		if (sigint_count > 1)
+		{
+			restoreTermios();
+			exit(130);
+		}
+	}
+
 	// Foreground process loopkup in shellspawn doesn't work
 	// if we're not running in TTY mode, so shellspawn falls back
 	// to forwarding signals to the Bash subprocess.
@@ -2603,6 +2623,7 @@ void setupShellspawnEnv(int sockfd)
 		"PATH",
 		"TMPDIR",
 		"HOME",
+		"TERM",
 		"PERL5LIB",
 	};
 
@@ -2668,6 +2689,8 @@ void setupShellspawnEnv(int sockfd)
 
 	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, "TERM=xterm-256color");
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, "CURL_SSL_BACKEND=openssl");
 
 	for (char** var_ptr = environ; *var_ptr != NULL; ++var_ptr) {
 		const char* var = *var_ptr;
@@ -3201,9 +3224,13 @@ void setupPrefix()
 		"/private/var/db",
 		"/private/etc",
 		"/var",
+		"/var/root",
 		"/var/run",
 		"/var/tmp",
-		"/var/log"
+		"/var/log",
+		"/Library",
+		"/Library/Java",
+		"/Library/Java/JavaVirtualMachines"
 	};
 
 	fprintf(stderr, "Setting up a new Darling prefix at %s\n", prefix);
