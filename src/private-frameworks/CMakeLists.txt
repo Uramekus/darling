@@ -86,6 +86,8 @@ endif()
 if (COMPONENT_gui_stubs)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui_stubs")
 
+	add_subdirectory(CPAnalytics)
+
 	add_subdirectory(AccessibilitySharedUISupport)
 	add_subdirectory(AccessibilitySupport)
 	add_subdirectory(ActionKit)
