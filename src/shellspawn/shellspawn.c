@@ -148,7 +148,7 @@ void spawnShell(int fd)
 	bool read_cmds = true;
 
 	argv = (char**) malloc(sizeof(char*) * 3);
-	argv[0] = "/bin/bash";
+	argv[0] = "/bin/zsh";
 	argv[1] = "--login";
 
 	char* alloc_exec = NULL;
@@ -288,10 +288,6 @@ void spawnShell(int fd)
 		setsid();
 		setpgrp();
 
-		close(STDIN_FILENO);
-		close(STDOUT_FILENO);
-		close(STDERR_FILENO);
-
 		dup2(shellfd[0], STDIN_FILENO);
 		dup2(shellfd[1], STDOUT_FILENO);
 		dup2(shellfd[2], STDERR_FILENO);
@@ -305,9 +301,9 @@ void spawnShell(int fd)
 
 		fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
 
-		// In future, we may support spawning something else than Bash
+		// In future, we may support spawning something else than Zsh
 		// and check the provided shell against /etc/shells
-		execv(alloc_exec ? alloc_exec : "/bin/bash", argv);
+		execv(alloc_exec ? alloc_exec : "/bin/zsh", argv);
 
 		rv = errno;
 		write(pipefd[1], &rv, sizeof(rv));
