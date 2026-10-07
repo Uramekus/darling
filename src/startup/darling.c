@@ -2351,7 +2351,7 @@ static void signalHandler(int signo)
 	if (signo == SIGTERM || signo == SIGHUP || signo == SIGQUIT)
 	{
 		restoreTermios();
-		exit(128 + signo);
+		_exit(128 + signo);
 	}
 
 	if (signo == SIGINT)
@@ -2360,7 +2360,7 @@ static void signalHandler(int signo)
 		if (sigint_count > 1)
 		{
 			restoreTermios();
-			exit(130);
+			_exit(130);
 		}
 	}
 
